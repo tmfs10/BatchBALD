@@ -3,10 +3,12 @@ import torch.nn as nn
 
 from blackhc.progress_bar import with_progress_bar
 
+import torch.distributions as tdist
 import joint_entropy.exact as joint_entropy_exact
 import joint_entropy.sampling as joint_entropy_sampling
 import torch_utils
 import math
+import hsic
 
 from acquisition_batch import AcquisitionBatch
 
@@ -16,6 +18,112 @@ from reduced_consistent_mc_sampler import reduced_eval_consistent_bayesian_model
 
 compute_multi_bald_bag_multi_bald_batch_size = None
 
+def compute_multi_hsic_batch(
+    bayesian_model: nn.Module,
+    available_loader,
+    num_classes,
+    k,
+    b,
+    target_size,
+    initial_percentage,
+    reduce_percentage,
+	hsic_compute_batch_size,
+	hsic_kernel_name,
+    device=None,
+) -> AcquisitionBatch:
+    result = reduced_eval_consistent_bayesian_model(
+        bayesian_model=bayesian_model,
+        acquisition_function=AcquisitionFunction.bald,
+        num_classes=num_classes,
+        k=k,
+        initial_percentage=initial_percentage,
+        reduce_percentage=reduce_percentage,
+        target_size=target_size,
+        available_loader=available_loader,
+        device=device,
+    )
+
+    probs_B_K_C = result.logits_B_K_C.exp_()
+	B, K, C = list(result.logits_B_K_C.shape)
+
+	sample_B_K_C = probs_B_K_C
+	"""
+	dist_B_K_C = tdist.categorical.Categorical(result.logits_B_K_C.view(-1, C)) # shape B*K x C
+	sample_B_K_C = dist.sample([1]) # shape 1 x B*K
+	assert list(sample_B_K_C.shape) == [1, B*K]
+	sample_B_K_C = sample_B_K_C[0]
+	oh_sample = torch.eye(C)[sample_B_K_C] # B*K x C
+	oh_sample = oh_sample.view(B, K, C)
+	"""
+
+	kernel_fn = getattr(hsic, 'dimwise_'+hsic_kernel_name+'_kernels')
+
+	dist_matrices = []
+	bs = 0
+	while bs < B:
+		be = min(B, bs+hsic_compute_batch_size)
+		dist_matrix = hsic.sqdist(sample_B_K_C[bs:be].permute([1, 0, 2]))
+		dist_matrices += [dist_matrix]
+		bs = be
+	dist_matrices = torch.cat(dist_matrices, dim=-1)
+
+	bs = 0
+	while bs < B:
+		be = min(B, bs+hsic_compute_batch_size)
+		dist_matrices[bs:be] = kernel_fn(dist_matrices[bs:be])
+		bs = be
+	kernel_matrices = dist_matrices.permute([2, 0, 1])
+	assert list(kernel_matrices).shape == [B, K, K]
+
+	self_hsic = []
+	bs = 0
+	bi = 0
+	while bs < B:
+		be = min(B, bs+hsic_compute_batch_size)
+		self_hsic += [hsic.total_hsic_parallel(kernel_matrices[bs:be].unsqueeze(-1).repeat([1, 1, 1, 2]), return_log=True)]
+		bs = be
+		bi += 1
+	self_hsic = torch.cat(self_hsic, dim=0)
+	assert list(self_hsic.shape) == [B]
+
+	winner_index = result.scores_B.argmax().item()
+
+	ack_bag = [winner_index]
+	acquisition_bag_scores = [0]
+	batch_kernel = kernel_matrices[winner_index:winner_index+1].unsqueeze(-1) # n, n, cur_batch_size
+	print('Computing HSIC for', B, 'points')
+	for ackb_i in range(1, b):
+		hsic_scores = []
+		bs = 0
+		bi = 0
+		while bs < B:
+			be = min(B, bs+hsic_compute_batch_size)
+			m = be-bs
+			hsic_scores += [hsic.total_hsic_parallel(
+				torch.cat(
+					[
+						batch_kernel.unsqueeze(0).repeat([m, 1, 1, 1]), 
+						kernel_matrices[bs:be].unsqueeze(-1)
+					],
+					dim=-1),
+				return_log=True
+				)
+		hsic_scores = torch.cat(hsic_scores)
+		assert hsic_scores.shape == self_hsic.shape
+		hsic_scores -= self_hsic
+		hsic_scores[ack_bag] = math.inf
+		
+		winner_index = hsic_scores.argmin().item()
+		assert winner_index not in ack_bag
+		winner_hsic = hsic_scores[winner_index].exp().item()
+
+		print('hsic of batch', winner_hsic)
+
+		batch_kernel = torch.cat([batch_kernel, kernel_matrices[winner_index].unsqueeze(-1)])
+		ack_bag += [winner_index]
+		acquisition_bag_scores += [winner_hsic]
+
+    return AcquisitionBatch(ack_bag, acquisition_bag_scores, None)
 
 def compute_multi_bald_batch(
     bayesian_model: nn.Module,

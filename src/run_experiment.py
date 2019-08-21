@@ -121,7 +121,23 @@ def create_experiment_config_argparser(parser):
         default=False,
         help="force balances the test set---use with CAUTION!",
     )
-    return parser
+
+	# HSIC arguments
+
+    parser.add_argument(
+		"--hsic_compute_batch_size",
+		type=int,
+		default=1000,
+	)
+
+    parser.add_argument(
+		"--hsic_kernel",
+		type=str,
+		default='mixrq',
+	)
+
+	return parser
+
 
 
 def main():
