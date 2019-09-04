@@ -37,7 +37,7 @@ def get_cuda_blocked_memory():
     current_block = available_memory - 2 ** 30
     while True:
         try:
-            block = torch.empty((current_block,), dtype=torch.uint8, device="cuda")
+            block = torch.empty((current_block,), dtype=torch.bool, device="cuda")
             break
         except RuntimeError as exception:
             if is_cuda_out_of_memory(exception):

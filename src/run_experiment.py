@@ -1,6 +1,7 @@
 import argparse
 import sys
 import torch
+from gpu_utils.utils import gpu_init, nvidia_smi
 
 from acquisition_method import AcquisitionMethod
 from context_stopwatch import ContextStopwatch
@@ -24,6 +25,7 @@ import os
 
 def create_experiment_config_argparser(parser):
     parser.add_argument("--batch_size", type=int, default=64, help="input batch size for training")
+    parser.add_argument("--gpu", type=int, default=0, help="GPU id")
     parser.add_argument("--scoring_batch_size", type=int, default=256, help="input batch size for scoring")
     parser.add_argument("--test_batch_size", type=int, default=256, help="input batch size for testing")
     parser.add_argument(
@@ -64,7 +66,7 @@ def create_experiment_config_argparser(parser):
         type=int,
         action="append",
         help="sample that needs to be part of the initial samples (instead of sampling initial_samples_per_class)",
-        default=None,
+        default=[38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 54379, 24287, 9849, 59305, 39508, 39356, 8758, 52579, 13655, 7636, 21562, 41329],
     )
     parser.add_argument(
         "--type",
@@ -122,21 +124,21 @@ def create_experiment_config_argparser(parser):
         help="force balances the test set---use with CAUTION!",
     )
 
-	# HSIC arguments
+    # HSIC arguments
 
     parser.add_argument(
-		"--hsic_compute_batch_size",
-		type=int,
-		default=1000,
-	)
+        "--hsic_compute_batch_size",
+        type=int,
+        default=1000,
+    )
 
     parser.add_argument(
-		"--hsic_kernel",
-		type=str,
-		default='mixrq',
-	)
-
-	return parser
+        "--hsic_kernel_name",
+        type=str,
+        default='mixrq',
+    )
+    
+    return parser
 
 
 
@@ -153,6 +155,12 @@ def main():
     )
     parser = create_experiment_config_argparser(parser)
     args = parser.parse_args()
+
+    if args.gpu == -1:
+        gpu_id = gpu_init(best_gpu_metric="mem")
+    else:
+        gpu_id = gpu_init(gpu_id=args.gpu)
+    print("Running on GPU " + str(gpu_id))
 
     if args.experiments_laaos is not None:
         config = laaos.safe_load(
@@ -276,6 +284,8 @@ def main():
                 min_remaining_percentage=args.min_remaining_percentage,
                 initial_percentage=args.initial_percentage,
                 reduce_percentage=args.reduce_percentage,
+                hsic_compute_batch_size=args.hsic_compute_batch_size,
+                hsic_kernel_name=args.hsic_kernel_name,
                 device=device,
             )
 

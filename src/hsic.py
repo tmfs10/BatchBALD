@@ -324,10 +324,10 @@ def total_hsic_parallel(kernels, return_log=False):
     assert l.shape[1] == 3
     a = torch.max(l, dim=1)[0]
 
-	if return_log:
-		return a + ((l1 - a).exp() - (l2 - a).exp() + (l3 - a).exp()).log()
-	else:
-		return a.exp() * ((l1 - a).exp() - (l2 - a).exp() + (l3 - a).exp())
+    if return_log:
+        return a + ((l1 - a).exp() - (l2 - a).exp() + (l3 - a).exp()).log()
+    else:
+        return a.exp() * ((l1 - a).exp() - (l2 - a).exp() + (l3 - a).exp())
 
 
 def sum_pairwise_hsic(kernels):
@@ -497,6 +497,7 @@ def hsic_xy(
 
 def hsic_xy_parallel(kernel_x, kernel_y, biased=False, center_x=False, normalized=False,
          eps=ops._eps):
+    # kernel size is (m, n, n)
     m = kernel_x.shape[0]
     n = kernel_x.shape[1]
 

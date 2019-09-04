@@ -195,7 +195,7 @@ def cross_cov(x, y):
 
 def parallel_cross_cov(x, y):
     # calculate covariance vector
-    # (p, n, a), (p, n, b) -> (b, n, q), n is the number of samples
+    # (p, n, a), (p, n, b) -> (p, a, b), n is the number of samples
 
     mean_x = x.mean(1, keepdim=True)
     mean_y = y.mean(1, keepdim=True)
@@ -212,7 +212,7 @@ def parallel_cross_cov(x, y):
 
 def parallel_cross_corrcoef(x, y):
     # calculate correlation vector
-    # (p, n, a), (p, n, b) -> (b, n, q), n is the number of samples
+    # (p, n, a), (p, n, b) -> (p, a, b), n is the number of samples
 
     c = parallel_cross_cov(x, y)
     stddev_x = x.std(1, keepdim=True).permute([0, 2, 1]) # (p, a, 1)

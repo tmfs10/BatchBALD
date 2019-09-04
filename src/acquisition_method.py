@@ -11,6 +11,7 @@ from acquisition_functions import AcquisitionFunction
 class AcquisitionMethod(enum.Enum):
     independent = "independent"
     multibald = "multibald"
+    hsicbald = "hsicbald"
 
     def acquire_batch(
         self,
@@ -24,6 +25,8 @@ class AcquisitionMethod(enum.Enum):
         min_remaining_percentage,
         initial_percentage,
         reduce_percentage,
+        hsic_compute_batch_size=None,
+        hsic_kernel_name=None,
         device=None,
     ) -> AcquisitionBatch:
         target_size = max(
@@ -52,6 +55,20 @@ class AcquisitionMethod(enum.Enum):
                 initial_percentage=initial_percentage,
                 reduce_percentage=reduce_percentage,
                 target_size=target_size,
+                device=device,
+            )
+        elif self == self.hsicbald:
+            return multi_bald.compute_multi_hsic_batch4(
+                bayesian_model=bayesian_model,
+                available_loader=available_loader,
+                num_classes=num_classes,
+                k=k,
+                b=b,
+                initial_percentage=initial_percentage,
+                reduce_percentage=reduce_percentage,
+                target_size=target_size,
+                hsic_compute_batch_size=hsic_compute_batch_size,
+                hsic_kernel_name=hsic_kernel_name,
                 device=device,
             )
         else:
