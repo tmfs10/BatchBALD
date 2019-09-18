@@ -357,7 +357,7 @@ def compute_multi_hsic_batch4(
                         torch.cat([
                             batch_kernel.unsqueeze(0).repeat([m, 1, 1, 1]),
                             kernel_matrices[bs:be].unsqueeze(-1),
-                        ], dim=-1).mean(dim=-1, keepdims=True),
+                        ], dim=-1).mean(dim=-1, keepdim=True),
                     ],
                     dim=-1
                     )
@@ -383,6 +383,7 @@ def compute_multi_hsic_batch4(
         #indices_to_condense = [idx.item() for idx in score_sort_idx[:num_to_condense]]
         indices_to_condense = np.random.randint(low=0, high=score_sort_idx.shape[0], size=num_to_condense)
 
+    assert len(ack_bag) == b
     np.set_printoptions(precision=3, suppress=True)
     #print('Acquired predictions')
     #for i in range(len(ack_bag)):
