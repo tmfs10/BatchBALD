@@ -357,7 +357,7 @@ def compute_multi_hsic_batch4(
                         torch.cat([
                             batch_kernel.unsqueeze(0).repeat([m, 1, 1, 1]),
                             kernel_matrices[bs:be].unsqueeze(-1),
-                        ], dim=-1).mean(dim=-1, keepdims=True),
+                        ], dim=-1).mean(dim=-1, keepdim=True),
                     ],
                     dim=-1
                     )
@@ -387,7 +387,7 @@ def compute_multi_hsic_batch4(
     #print('Acquired predictions')
     #for i in range(len(ack_bag)):
     #    print('ack_i', i, probs_B_K_C[ack_bag[i]].cpu().numpy())
-
+    assert len(ack_bag)==b
     return AcquisitionBatch(ack_bag, acquisition_bag_scores, None)
 
 def compute_multi_hsic_batch2(
