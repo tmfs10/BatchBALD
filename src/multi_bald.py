@@ -259,6 +259,85 @@ def compute_multi_hsic_batch(
 
     return AcquisitionBatch(ack_bag, acquisition_bag_scores, None)
 
+def compute_fass_batch(
+    bayesian_model: nn.Module,
+    available_loader,
+    num_classes,
+    k,
+    b,
+    target_size,
+    initial_percentage,
+    reduce_percentage,
+    max_entropy_bag_size,
+    device=None,
+) -> AcquisitionBatch:
+    result = reduced_eval_consistent_bayesian_model(
+        bayesian_model=bayesian_model,
+        acquisition_function=AcquisitionFunction.bald,
+        num_classes=num_classes,
+        k=k,
+        initial_percentage=initial_percentage,
+        reduce_percentage=reduce_percentage,
+        target_size=target_size,
+        available_loader=available_loader,
+        device=device,
+    )
+
+    probs_B_C = result.logits_B_K_C.exp_().mean(dim=1)
+    entropy = -(probs_B_C * probs_B_C.log()).sum(dim=-1)
+
+    ack_bag = []
+    global_acquisition_bag = []
+    acquisition_bag_scores = []
+
+    score_sort = torch.sort(entropy, descending=True)
+    score_sort_idx = score_sort[1]
+    score_sort = score_sort[0]
+
+    cand_pts_idx = set(score_sort_idx[:max_entropy_bag_size].cpu().numpy().tolist())
+
+    cand_X = []
+    for i, (batch, labels) in enumerate(
+        with_progress_bar(available_loader, unit_scale=dataloader.batch_size)
+    ):
+        lower = i * dataloader.batch_size
+        upper = min(lower + dataloader.batch_size, B)
+        idx_to_extract = set(range(lower, upper)).intersection(cand_pts_idx)
+
+        batch = batch.view(batch.shape[0], -1) # batch_size x num_features
+        cand_X += batch[idx_to_extract]
+
+    cand_X = torch.cat(cand_X, dim=0).unsqueeze(1)
+
+    sim_vec = []
+    for ackb_i in range(b):
+        for i, (batch, labels) in enumerate(
+            with_progress_bar(available_loader, unit_scale=dataloader.batch_size)
+        ):
+            lower = i * dataloader.batch_size
+            upper = min(lower + dataloader.batch_size, B)
+
+            batch = batch.view(batch.shape[0], -1).unsqueeze(1) # batch_size x 1 x num_features
+
+            sqdist = ops.sqdist(batch, cand_X).mean(-1) # batch_size x cand_X size x 1
+            shp = [batch.shape[0], cand_X.shape[0]]
+            assert list(sqdist.shape) == shp, "%s == %s" % (sqdist.shape, shp)
+
+            sim_vec += torch.min(sqdist, dim=-1)[0]
+        sim_vec = torch.cat(sim_vec, dim=0)
+        winner_index = sim_vec.argmax().item()
+        ack_bag += [winner_index]
+        global_acquisition_bag.append(result.subset_split.get_dataset_indices([winner_index]).item())
+        print('winner score', result.scores_B[winner_index].item(), ', ackb_i', ackb_i)
+
+    assert len(ack_bag) == b
+    np.set_printoptions(precision=3, suppress=True)
+    #print('Acquired predictions')
+    #for i in range(len(ack_bag)):
+    #    print('ack_i', i, probs_B_K_C[ack_bag[i]].cpu().numpy())
+
+    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None)
+
 def compute_multi_hsic_batch4(
     bayesian_model: nn.Module,
     available_loader,
@@ -321,6 +400,7 @@ def compute_multi_hsic_batch4(
     assert list(kernel_matrices.shape) == [B, K, K], "%s == %s" % (kernel_matrices.shape, [B, K, K])
 
     ack_bag = []
+    global_acquisition_bag = []
     acquisition_bag_scores = []
     batch_kernel = None
     print('Computing HSIC for', B, 'points')
@@ -369,6 +449,7 @@ def compute_multi_hsic_batch4(
 
         winner_index = hsic_scores.argmax().item()
         ack_bag += [winner_index]
+        global_acquisition_bag.append(result.subset_split.get_dataset_indices([winner_index]).item())
         acquisition_bag_scores += [hsic_scores[winner_index].item()]
         print('winner score', result.scores_B[winner_index].item(), ', hsic_score', hsic_scores[winner_index].item(), ', ackb_i', ackb_i)
         if batch_kernel is None:
@@ -389,7 +470,7 @@ def compute_multi_hsic_batch4(
     #for i in range(len(ack_bag)):
     #    print('ack_i', i, probs_B_K_C[ack_bag[i]].cpu().numpy())
 
-    return AcquisitionBatch(ack_bag, acquisition_bag_scores, None)
+    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None)
 
 def compute_multi_hsic_batch2(
     bayesian_model: nn.Module,
@@ -569,6 +650,7 @@ def compute_multi_hsic_batch3(
     assert list(kernel_matrices.shape) == [B, K, K], "%s == %s" % (kernel_matrices.shape, [B, K, K])
 
     ack_bag = []
+    global_acquisition_bag = []
     acquisition_bag_scores = []
     batch_kernel = None
     print('Computing HSIC for', B, 'points')
@@ -630,6 +712,7 @@ def compute_multi_hsic_batch3(
         else:
             batch_kernel = kernel_matrices[winner_index].unsqueeze(-1)
         ack_bag += [winner_index]
+        global_acquisition_bag.append(result.subset_split.get_dataset_indices([winner_index]).item())
         acquisition_bag_scores += [winner_hsic]
 
     np.set_printoptions(precision=3, suppress=True)
@@ -637,7 +720,7 @@ def compute_multi_hsic_batch3(
     #for i in range(len(ack_bag)):
     #    print('ack_i', i, probs_B_K_C[ack_bag[i]].cpu().numpy())
 
-    return AcquisitionBatch(ack_bag, acquisition_bag_scores, None)
+    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None)
 
 def compute_multi_bald_batch(
     bayesian_model: nn.Module,
