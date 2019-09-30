@@ -12,6 +12,7 @@ class AcquisitionMethod(enum.Enum):
     independent = "independent"
     multibald = "multibald"
     hsicbald = "hsicbald"
+    fass = "fass"
 
     def acquire_batch(
         self,
@@ -27,6 +28,8 @@ class AcquisitionMethod(enum.Enum):
         reduce_percentage,
         hsic_compute_batch_size=None,
         hsic_kernel_name=None,
+        hsic_resample=True,
+        fass_entropy_bag_size_factor=2.0,
         device=None,
     ) -> AcquisitionBatch:
         target_size = max(
@@ -69,6 +72,20 @@ class AcquisitionMethod(enum.Enum):
                 target_size=target_size,
                 hsic_compute_batch_size=hsic_compute_batch_size,
                 hsic_kernel_name=hsic_kernel_name,
+                hsic_resample=hsic_resample,
+                device=device,
+            )
+        elif self == self.fass:
+            return multi_bald.compute_fass_batch(
+                bayesian_model=bayesian_model,
+                available_loader=available_loader,
+                num_classes=num_classes,
+                k=k,
+                b=b,
+                initial_percentage=initial_percentage,
+                reduce_percentage=reduce_percentage,
+                target_size=target_size,
+                max_entropy_bag_size=int(b*fass_entropy_bag_size_factor),
                 device=device,
             )
         else:
