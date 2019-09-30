@@ -469,7 +469,6 @@ def compute_multi_hsic_batch4(
     #print('Acquired predictions')
     #for i in range(len(ack_bag)):
     #    print('ack_i', i, probs_B_K_C[ack_bag[i]].cpu().numpy())
-
     return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None)
 
 def compute_multi_hsic_batch2(
