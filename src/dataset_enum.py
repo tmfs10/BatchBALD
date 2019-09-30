@@ -13,6 +13,7 @@ from typing import List
 
 import mnist_model
 import emnist_model
+import cifar_model
 from active_learning_data import ActiveLearningData
 from torch_utils import get_balanced_sample_indices
 from train_model import train_model
@@ -65,6 +66,7 @@ class DatasetEnum(enum.Enum):
     emnist_bymerge = "emnist_bymerge"
     repeated_mnist_w_noise = "repeated_mnist_w_noise"
     mnist_w_noise = "mnist_w_noise"
+    cifar= "cifar"
 
     def get_data_source(self):
         if self == DatasetEnum.mnist:
@@ -118,12 +120,17 @@ class DatasetEnum(enum.Enum):
             return DataSource(
                 train_dataset=train_dataset, test_dataset=test_dataset, validation_dataset=validation_dataset
             )
+        elif self==DatasetEnum.cifar:
+            transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            train_dataset = datasets.CIFAR10(root='./data', train=True,download=True, transform=transform)
+            test_dataset = datasets.CIFAR10(root='./data', train=False,download=True, transform=transform)
+            return DataSource(train_dataset=train_dataset, test_dataset=test_dataset)
         else:
             raise NotImplementedError(f"Unknown dataset {self}!")
 
     @property
     def num_classes(self):
-        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise):
+        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise, DatasetEnum.cifar):
             return 10
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return 47
@@ -136,6 +143,8 @@ class DatasetEnum(enum.Enum):
             return mnist_model.BayesianNet(num_classes=num_classes).to(device)
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return emnist_model.BayesianNet(num_classes=num_classes).to(device)
+        elif self==DatasetEnum.cifar:
+            return cifar_model.BayesianNet(num_classes=num_classes).to(device)
         else:
             raise NotImplementedError(f"Unknown dataset {self}!")
 
@@ -372,6 +381,8 @@ def get_targets(dataset):
         return torch.cat([get_targets(sub_dataset) for sub_dataset in dataset.datasets])
 
     if isinstance(dataset, (datasets.MNIST,)):
+        return dataset.targets
+    if isinstance(dataset, (datasets.CIFAR10,)):
         return dataset.targets
 
     raise NotImplementedError(f"Unknown dataset {dataset}!")
