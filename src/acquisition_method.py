@@ -28,6 +28,7 @@ class AcquisitionMethod(enum.Enum):
         reduce_percentage,
         hsic_compute_batch_size=None,
         hsic_kernel_name=None,
+        hsic_resample=True,
         fass_entropy_bag_size_factor=2.0,
         device=None,
     ) -> AcquisitionBatch:
@@ -71,6 +72,7 @@ class AcquisitionMethod(enum.Enum):
                 target_size=target_size,
                 hsic_compute_batch_size=hsic_compute_batch_size,
                 hsic_kernel_name=hsic_kernel_name,
+                hsic_resample=hsic_resample,
                 device=device,
             )
         elif self == self.fass:

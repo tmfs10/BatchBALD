@@ -132,6 +132,20 @@ def create_experiment_config_argparser(parser):
         default=1000,
     )
 
+    def str2bool(v):
+        if v.lower() in ('true', '1', 'y', 'yes'):
+            return True
+        elif v.lower() in ('false', '0', 'n', 'no'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected. Got' + v)
+
+    parser.add_argument(
+        "--hsic_resample",
+        type=str2bool,
+        default="True",
+    )
+
     parser.add_argument(
         "--hsic_kernel_name",
         type=str,
@@ -294,6 +308,7 @@ def main():
                 hsic_compute_batch_size=args.hsic_compute_batch_size,
                 hsic_kernel_name=args.hsic_kernel_name,
                 fass_entropy_bag_size_factor=args.fass_entropy_bag_size_factor,
+                hsic_resample=args.hsic_resample,
                 device=device,
             )
 

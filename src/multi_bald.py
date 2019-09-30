@@ -351,6 +351,7 @@ def compute_multi_hsic_batch4(
     reduce_percentage,
     hsic_compute_batch_size,
     hsic_kernel_name,
+    hsic_resample=True,
     device=None,
 ) -> AcquisitionBatch:
     assert hsic_compute_batch_size is not None
@@ -398,7 +399,7 @@ def compute_multi_hsic_batch4(
         be = min(B, bs+hsic_compute_batch_size)
         dist_matrices[:, :, bs:be] = kernel_fn(dist_matrices[:, :, bs:be])
         bs = be
-    kernel_matrices = dist_matrices.permute([2, 0, 1]) # B, K, K
+    kernel_matrices = dist_matrices.permute([2, 0, 1]).to(device) # B, K, K
     assert list(kernel_matrices.shape) == [B, K, K], "%s == %s" % (kernel_matrices.shape, [B, K, K])
 
     ack_bag = []
@@ -464,7 +465,8 @@ def compute_multi_hsic_batch4(
         score_sort_idx = score_sort[1]
         score_sort = score_sort[0]
         #indices_to_condense = [idx.item() for idx in score_sort_idx[:num_to_condense]]
-        indices_to_condense = np.random.randint(low=0, high=score_sort_idx.shape[0], size=num_to_condense)
+        if hsic_resample:
+            indices_to_condense = np.random.randint(low=0, high=score_sort_idx.shape[0], size=num_to_condense)
 
     assert len(ack_bag) == b
     np.set_printoptions(precision=3, suppress=True)
