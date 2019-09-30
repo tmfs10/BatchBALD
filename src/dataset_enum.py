@@ -13,7 +13,7 @@ from typing import List
 
 import mnist_model
 import emnist_model
-import cifar_model
+#import cifar_model
 from active_learning_data import ActiveLearningData
 from torch_utils import get_balanced_sample_indices
 from train_model import train_model

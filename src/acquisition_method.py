@@ -28,6 +28,7 @@ class AcquisitionMethod(enum.Enum):
         reduce_percentage,
         hsic_compute_batch_size=None,
         hsic_kernel_name=None,
+        fass_entropy_bag_size_factor=2.0,
         device=None,
     ) -> AcquisitionBatch:
         target_size = max(
@@ -82,8 +83,7 @@ class AcquisitionMethod(enum.Enum):
                 initial_percentage=initial_percentage,
                 reduce_percentage=reduce_percentage,
                 target_size=target_size,
-                hsic_compute_batch_size=hsic_compute_batch_size,
-                hsic_kernel_name=hsic_kernel_name,
+                max_entropy_bag_size=int(b*fass_entropy_bag_size_factor),
                 device=device,
             )
         else:

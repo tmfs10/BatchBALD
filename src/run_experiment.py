@@ -126,7 +126,6 @@ def create_experiment_config_argparser(parser):
     )
 
     # HSIC arguments
-
     parser.add_argument(
         "--hsic_compute_batch_size",
         type=int,
@@ -139,6 +138,13 @@ def create_experiment_config_argparser(parser):
         default='mixrq',
     )
     
+    # FASS arguments
+    parser.add_argument(
+        "--fass_entropy_bag_size_factor",
+        type=float,
+        default=2.0,
+    )
+
     return parser
 
 
@@ -287,6 +293,7 @@ def main():
                 reduce_percentage=args.reduce_percentage,
                 hsic_compute_batch_size=args.hsic_compute_batch_size,
                 hsic_kernel_name=args.hsic_kernel_name,
+                fass_entropy_bag_size_factor=args.fass_entropy_bag_size_factor,
                 device=device,
             )
 

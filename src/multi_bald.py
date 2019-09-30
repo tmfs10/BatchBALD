@@ -285,6 +285,7 @@ def compute_fass_batch(
 
     probs_B_C = result.logits_B_K_C.exp_().mean(dim=1)
     entropy = -(probs_B_C * probs_B_C.log()).sum(dim=-1)
+    B = entropy.shape[0]
 
     ack_bag = []
     global_acquisition_bag = []
@@ -298,34 +299,35 @@ def compute_fass_batch(
 
     cand_X = []
     for i, (batch, labels) in enumerate(
-        with_progress_bar(available_loader, unit_scale=dataloader.batch_size)
+        with_progress_bar(available_loader, unit_scale=available_loader.batch_size)
     ):
-        lower = i * dataloader.batch_size
-        upper = min(lower + dataloader.batch_size, B)
-        idx_to_extract = set(range(lower, upper)).intersection(cand_pts_idx)
+        lower = i * available_loader.batch_size
+        upper = min(lower + available_loader.batch_size, B)
+        idx_to_extract = np.array(list(set(range(lower, upper)).intersection(cand_pts_idx)), dtype=np.int32)
+        idx_to_extract -= lower
 
         batch = batch.view(batch.shape[0], -1) # batch_size x num_features
-        cand_X += batch[idx_to_extract]
+        cand_X += [batch[idx_to_extract]]
 
     cand_X = torch.cat(cand_X, dim=0).unsqueeze(1)
 
-    sim_vec = []
     for ackb_i in range(b):
+        sim_vec = []
         for i, (batch, labels) in enumerate(
-            with_progress_bar(available_loader, unit_scale=dataloader.batch_size)
+            with_progress_bar(available_loader, unit_scale=available_loader.batch_size)
         ):
-            lower = i * dataloader.batch_size
-            upper = min(lower + dataloader.batch_size, B)
+            lower = i * available_loader.batch_size
+            upper = min(lower + available_loader.batch_size, B)
 
             batch = batch.view(batch.shape[0], -1).unsqueeze(1) # batch_size x 1 x num_features
 
-            sqdist = ops.sqdist(batch, cand_X).mean(-1) # batch_size x cand_X size x 1
+            sqdist = hsic.sqdist(batch, cand_X).mean(-1) # batch_size x cand_X size x 1
             shp = [batch.shape[0], cand_X.shape[0]]
             assert list(sqdist.shape) == shp, "%s == %s" % (sqdist.shape, shp)
 
-            sim_vec += torch.min(sqdist, dim=-1)[0]
+            sim_vec += [torch.min(sqdist, dim=-1)[0]]
         sim_vec = torch.cat(sim_vec, dim=0)
-        winner_index = sim_vec.argmax().item()
+        winner_index = sim_vec.argmin().item()
         ack_bag += [winner_index]
         global_acquisition_bag.append(result.subset_split.get_dataset_indices([winner_index]).item())
         print('winner score', result.scores_B[winner_index].item(), ', ackb_i', ackb_i)
