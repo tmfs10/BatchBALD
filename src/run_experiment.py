@@ -66,7 +66,7 @@ def create_experiment_config_argparser(parser):
         type=int,
         action="append",
         help="sample that needs to be part of the initial samples (instead of sampling initial_samples_per_class)",
-        default=[38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 34379, 24287, 9849, 29305, 39508, 39356, 8758, 42579, 13655, 7636, 21562, 41329]
+        default=None,#[38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 34379, 24287, 9849, 29305, 39508, 39356, 8758, 42579, 13655, 7636, 21562, 41329]
         #default=[38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 54379, 24287, 9849, 59305, 39508, 39356, 8758, 52579, 13655, 7636, 21562, 41329],
     )
     parser.add_argument(

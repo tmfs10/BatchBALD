@@ -299,7 +299,7 @@ def compute_multi_hsic_batch4(
     sample_B_K_C = sample_B_K_C[0]
     oh_sample = torch.eye(C)[sample_B_K_C] # B*K x C
     oh_sample = oh_sample.view(B, K, C)
-    sample_B_K_C = oh_sample
+    sample_B_K_C = oh_sample.to(device)
 
     kernel_fn = getattr(hsic, hsic_kernel_name+'_kernels')
 
@@ -310,14 +310,14 @@ def compute_multi_hsic_batch4(
         dist_matrix = hsic.sqdist(sample_B_K_C[bs:be].permute([1, 0, 2])) # n=K, d=B, k=C
         dist_matrices += [dist_matrix]
         bs = be
-    dist_matrices = torch.cat(dist_matrices, dim=-1)
+    dist_matrices = torch.cat(dist_matrices, dim=-1)#.to(device)
 
     bs = 0
     while bs < B:
         be = min(B, bs+hsic_compute_batch_size)
         dist_matrices[:, :, bs:be] = kernel_fn(dist_matrices[:, :, bs:be])
         bs = be
-    kernel_matrices = dist_matrices.permute([2, 0, 1]) # B, K, K
+    kernel_matrices = dist_matrices.permute([2, 0, 1]).to(device) # B, K, K
     assert list(kernel_matrices.shape) == [B, K, K], "%s == %s" % (kernel_matrices.shape, [B, K, K])
 
     ack_bag = []
@@ -348,7 +348,7 @@ def compute_multi_hsic_batch4(
                         kernel_matrices[bs:be].unsqueeze(-1),
                     ],
                     dim=-1
-                    )
+                    ).to(device)
                 )]
             else:
                 hsic_scores += [hsic.total_hsic_parallel(
@@ -360,7 +360,7 @@ def compute_multi_hsic_batch4(
                         ], dim=-1).mean(dim=-1, keepdim=True),
                     ],
                     dim=-1
-                    )
+                    ).to(device)
                 )]
             bs = be
 

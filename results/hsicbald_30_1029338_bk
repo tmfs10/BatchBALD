@@ -1,0 +1,204 @@
+Switched to directory /data/cgs/geliu/bo/BatchBALD
+Running on GPU 0
+src/run_experiment.py|--seed|1029338|--num_inference_samples|100|--available_sample_k|10|--acquisition_method|hsicbald|--gpu|0|--epochs|30
+{'experiment_task_id': None, 'experiments_laaos': None, 'experiment_description': 'Trying stuff..', 'batch_size': 64, 'gpu': 0, 'scoring_batch_size': 256, 'test_batch_size': 256, 'validation_set_size': 128, 'early_stopping_patience': 1, 'epochs': 30, 'epoch_samples': 5056, 'num_inference_samples': 100, 'available_sample_k': 10, 'target_num_acquired_samples': 800, 'target_accuracy': 0.98, 'no_cuda': False, 'quickquick': False, 'seed': 1029338, 'log_interval': 10, 'initial_samples_per_class': 2, 'initial_samples': [38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 54379, 24287, 9849, 59305, 39508, 39356, 8758, 52579, 13655, 7636, 21562, 41329], 'type': <AcquisitionFunction.bald: 'bald'>, 'acquisition_method': <AcquisitionMethod.hsicbald: 'hsicbald'>, 'dataset': <DatasetEnum.mnist: 'mnist'>, 'min_remaining_percentage': 100, 'min_candidates_per_acquired_item': 20, 'initial_percentage': 100, 'reduce_percentage': 0, 'balanced_validation_set': False, 'balanced_test_set': False, 'hsic_compute_batch_size': 1000, 'hsic_kernel_name': 'mixrq'}
+Using cuda for computations
+Acquiring validation set from training set.
+Distribution of training set classes:
+Counter({1: 6742, 7: 6265, 3: 6131, 2: 5958, 9: 5949, 0: 5923, 6: 5918, 8: 5851, 4: 5842, 5: 5421})
+Distribution of validation set classes:
+Counter({1: 18, 4: 18, 8: 16, 7: 14, 0: 13, 3: 11, 2: 11, 9: 11, 5: 8, 6: 8})
+Distribution of test set classes:
+Counter({1: 1135, 2: 1032, 7: 1028, 3: 1010, 9: 1009, 4: 982, 0: 980, 8: 974, 6: 958, 5: 892})
+Distribution of pool classes:
+Counter({1: 6722, 7: 6249, 3: 6118, 2: 5945, 9: 5936, 0: 5908, 6: 5908, 8: 5833, 4: 5822, 5: 5411})
+Distribution of active set classes:
+Counter({1: 2, 2: 2, 3: 2, 8: 2, 7: 2, 5: 2, 9: 2, 4: 2, 0: 2, 6: 2})
+Dataset info:
+	20 active samples
+	59852 available samples
+	128 validation samples
+	10000 test samples
+Training: 1 (20 samples)
+5056 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|1s   <   9s|1s   <   4s|1s   <   3s|1s   <   2s|1s   <   1s|1s   <   1s|1s   <   0s|1s   <   0s|2s   <   0s|2s   <   0s|
+2172.89it/s total: 2.33s
+Validation Eval: 1 (20 samples)
+256 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   3s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+649.89it/s total: 0.39s
+Validation Results - Epoch: 1  Avg accuracy: 64.06% Avg loss: 1.89
+Training: 1 (20 samples)
+5056 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   3s|0s   <   2s|0s   <   1s|0s   <   1s|0s   <   0s|1s   <   0s|1s   <   0s|1s   <   0s|1s   <   0s|1s   <   0s|
+2792.63it/s total: 1.81s
+Validation Eval: 1 (20 samples)
+256 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+1350.43it/s total: 0.19s
+Validation Results - Epoch: 2  Avg accuracy: 67.19% Avg loss: 2.31
+Training: 1 (20 samples)
+5056 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   1s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|1s   <   0s|1s   <   0s|
+4549.49it/s total: 1.11s
+Validation Eval: 1 (20 samples)
+256 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|RestoringScoreGuard: 1 / 1
+RestoringScoreGuard: Out of patience
+RestoringScoreGuard: Restoring best parameters. (Score: 0.671875)
+RestoringScoreGuard: Restoring optimizer.
+0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+1418.72it/s total: 0.18s
+Validation Results - Epoch: 3  Avg accuracy: 66.41% Avg loss: 2.58
+Test Eval: 1 (20 samples)
+10240 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   6s|0s   <   3s|1s   <   3s|1s   <   2s|1s   <   1s|2s   <   1s|2s   <   0s|2s   <   0s|2s   <   0s|2s   <   0s|
+3899.84it/s total: 2.63s
+Test Results - Epoch: 3  Avg accuracy: 65.18% Avg loss: 1.33
+Scoring subset of 59852 items:
+59904 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|2s   <  23s|5s   <  20s|7s   <  17s|10s  <  15s|12s  <  12s|15s  <  10s|17s  <   7s|20s  <   5s|22s  <   2s|25s  <   0s|
+2384.48it/s total: 25.12s
+65536 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   6s|0s   <   3s|0s   <   1s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+69980.40it/s total: 0.94s
+Computing HSIC for 59852 points
+winner score 0.55538565951268 , hsic_score 0.002023454988375306 , ackb_i 0
+winner score 0.5651154527505325 , hsic_score 0.0014178180135786533 , ackb_i 1
+winner score 0.47985308518250774 , hsic_score 0.0018306653946638107 , ackb_i 2
+winner score 0.5090608293226528 , hsic_score 0.0015624237712472677 , ackb_i 3
+winner score 0.5662763692146372 , hsic_score 0.0015942315803840756 , ackb_i 4
+winner score 0.8521704212145425 , hsic_score 0.0014074884820729494 , ackb_i 5
+winner score 0.5310026343306435 , hsic_score 0.0015077005373314023 , ackb_i 6
+winner score 0.670864881812568 , hsic_score 0.0015242142835631967 , ackb_i 7
+winner score 0.542177096801274 , hsic_score 0.0012785941362380981 , ackb_i 8
+winner score 0.47382328024967163 , hsic_score 0.0013421623734757304 , ackb_i 9
+Acquiring indices [57912, 53380, 12184, 15862, 49953, 7839, 47696, 1363, 25152, 57202]
+Acquiring targets [0, 0, 0, 6, 0, 2, 0, 0, 0, 0]
+Training: 2 (30 samples)
+5056 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   1s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|1s   <   0s|1s   <   0s|
+4647.43it/s total: 1.09s
+Validation Eval: 2 (30 samples)
+256 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+1397.67it/s total: 0.18s
+Validation Results - Epoch: 1  Avg accuracy: 61.72% Avg loss: 2.55
+Training: 2 (30 samples)
+5056 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   1s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|1s   <   0s|1s   <   0s|
+4657.92it/s total: 1.09s
+Validation Eval: 2 (30 samples)
+256 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|RestoringScoreGuard: 1 / 1
+RestoringScoreGuard: Out of patience
+RestoringScoreGuard: Restoring best parameters. (Score: 0.6171875)
+RestoringScoreGuard: Restoring optimizer.
+0s   <   2s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+1104.23it/s total: 0.23s
+Validation Results - Epoch: 2  Avg accuracy: 61.72% Avg loss: 3.10
+Test Eval: 2 (30 samples)
+10240 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   7s|0s   <   3s|1s   <   3s|1s   <   2s|1s   <   1s|2s   <   1s|2s   <   0s|2s   <   0s|2s   <   0s|2s   <   0s|
+3870.53it/s total: 2.65s
+Test Results - Epoch: 2  Avg accuracy: 62.64% Avg loss: 1.32
+Scoring subset of 59842 items:
+59904 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|2s   <  23s|5s   <  20s|7s   <  17s|10s  <  15s|12s  <  12s|15s  <  10s|17s  <   7s|20s  <   5s|22s  <   2s|25s  <   0s|
+2388.35it/s total: 25.08s
+65536 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+206045.64it/s total: 0.32s
+Computing HSIC for 59842 points
+winner score 0.935495395188461 , hsic_score 0.00181741698179394 , ackb_i 0
+winner score 0.4086688310890392 , hsic_score 0.0017664256738498807 , ackb_i 1
+winner score 0.852662939410553 , hsic_score 0.0016288759652525187 , ackb_i 2
+winner score 0.6315731335906828 , hsic_score 0.001609975122846663 , ackb_i 3
+winner score 0.3620348555908533 , hsic_score 0.0018367202719673514 , ackb_i 4
+winner score 0.6095478992251833 , hsic_score 0.001663639792241156 , ackb_i 5
+winner score 0.8182165991690125 , hsic_score 0.0017176473047584295 , ackb_i 6
+winner score 0.4031809995744509 , hsic_score 0.0016558024799451232 , ackb_i 7
+winner score 0.8434650931445665 , hsic_score 0.0016873489366844296 , ackb_i 8
+winner score 0.9016878821663065 , hsic_score 0.001435401733033359 , ackb_i 9
+Acquiring indices [16018, 22859, 41302, 57752, 13413, 39627, 21987, 8373, 7601, 21869]
+Acquiring targets [2, 1, 9, 2, 1, 2, 9, 1, 2, 9]
+Training: 3 (40 samples)
+5056 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|1s   <   0s|1s   <   0s|
+4682.67it/s total: 1.08s
+Validation Eval: 3 (40 samples)
+256 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+1548.01it/s total: 0.17s
+Validation Results - Epoch: 1  Avg accuracy: 58.59% Avg loss: 2.17
+Training: 3 (40 samples)
+5056 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   1s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|1s   <   0s|1s   <   0s|
+4631.46it/s total: 1.09s
+Validation Eval: 3 (40 samples)
+256 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+1495.41it/s total: 0.17s
+Validation Results - Epoch: 2  Avg accuracy: 60.16% Avg loss: 2.45
+Training: 3 (40 samples)
+5056 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|1s   <   0s|1s   <   0s|
+4641.68it/s total: 1.09s
+Validation Eval: 3 (40 samples)
+256 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|RestoringScoreGuard: 1 / 1
+RestoringScoreGuard: Out of patience
+RestoringScoreGuard: Restoring best parameters. (Score: 0.6015625)
+RestoringScoreGuard: Restoring optimizer.
+0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+1266.97it/s total: 0.20s
+Validation Results - Epoch: 3  Avg accuracy: 60.16% Avg loss: 2.90
+Test Eval: 3 (40 samples)
+10240 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   7s|0s   <   3s|1s   <   3s|1s   <   2s|1s   <   1s|2s   <   1s|2s   <   0s|2s   <   0s|2s   <   0s|2s   <   0s|
+3824.36it/s total: 2.68s
+Test Results - Epoch: 3  Avg accuracy: 67.50% Avg loss: 1.14
+Scoring subset of 59832 items:
+59904 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|2s   <  23s|5s   <  20s|7s   <  17s|10s  <  15s|12s  <  12s|15s  <  10s|17s  <   7s|20s  <   5s|22s  <   2s|25s  <   0s|
+2377.07it/s total: 25.20s
+65536 iterations:
+|    10%    |    20%    |    30%    |    40%    |    50%    |    60%    |    70%    |    80%    |    90%    |   100%    |
+|0s   <   1s|0s   <   1s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|0s   <   0s|
+159266.03it/s total: 0.41s
+Computing HSIC for 59832 points
+winner score 0.907967112953261 , hsic_score 0.0014993742806836963 , ackb_i 0
+Traceback (most recent call last):
+  File "src/run_experiment.py", line 327, in <module>
+    main()
+  File "src/run_experiment.py", line 289, in main
+    device=device,
+  File "/data/cgs/geliu/bo/BatchBALD/src/acquisition_method.py", line 72, in acquire_batch
+    device=device,
+  File "/data/cgs/geliu/bo/BatchBALD/src/multi_bald.py", line 362, in compute_multi_hsic_batch4
+    dim=-1
+KeyboardInterrupt

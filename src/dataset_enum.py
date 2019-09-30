@@ -20,6 +20,10 @@ from train_model import train_model
 from transformed_dataset import TransformedDataset
 import subrange_dataset
 
+class EMNIST(datasets.EMNIST):
+    url='http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/gzip.zip'
+    def __init__(self, root, split, **kwargs):
+        super(EMNIST, self).__init__(root,split, **kwargs)
 
 @dataclass
 class ExperimentData:
@@ -97,9 +101,9 @@ class DatasetEnum(enum.Enum):
             # num_classes=47, input_size=28,
             split = "balanced" if self == DatasetEnum.emnist else "bymerge"
             transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-            train_dataset = datasets.EMNIST("emnist_data", split=split, train=True, download=True, transform=transform)
+            train_dataset = EMNIST("emnist_data", split=split, train=True, download=True, transform=transform)
 
-            test_dataset = datasets.EMNIST("emnist_data", split=split, train=False, transform=transform)
+            test_dataset = EMNIST("emnist_data", split=split, train=False, transform=transform)
 
             """
                 Table II contains a summary of the EMNIST datasets and
