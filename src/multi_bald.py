@@ -381,7 +381,7 @@ def compute_multi_hsic_batch4(
     sample_B_K_C = sample_B_K_C[0]
     oh_sample = torch.eye(C)[sample_B_K_C] # B*K x C
     oh_sample = oh_sample.view(B, K, C)
-    sample_B_K_C = oh_sample.to(device)
+    sample_B_K_C = oh_sample#.to(device)
 
     kernel_fn = getattr(hsic, hsic_kernel_name+'_kernels')
 
