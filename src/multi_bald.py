@@ -324,16 +324,17 @@ def compute_fass_batch(
     ack_bag = []
     global_acquisition_bag = []
     for ackb_i in range(b):
-        cand_distance = torch.empty((cand_X.shape[0],), device=device)
+        cand_distance = torch.ones((cand_X.shape[0],), device=device) * max_dist
         for c in range(C):
             cand_c_idx = cand_X_preds == c
             if cand_c_idx.long().sum() == 0:
                 continue
-            cand_distance[cand_c_idx] = torch.min(torch.cat([cand_min_dist[cand_c_idx].unsqueeze(-1), sqdist[cand_c_idx]], dim=-1), dim=-1)[0]
-        winner_index = cand_distance.argmin()
-        sqdist[:, winner_index] = max_dist
-        winner_index = cand_X_idx[winner_index].item()
+            cand_distance[cand_c_idx] = torch.min(torch.cat([cand_min_dist[cand_c_idx].unsqueeze(-1).repeat([1, sqdist.shape[1]]).unsqueeze(-1), sqdist[cand_c_idx].unsqueeze(-1)], dim=-1), dim=-1)[0].mean(1)
+        cand_distance[ack_bag] = max_dist
+        winner_index = cand_distance.argmin().item()
         ack_bag += [winner_index]
+        #print('cand_distance.shape', cand_distance.shape, winner_index, cand_X_idx.shape)
+        winner_index = cand_X_idx[winner_index].item()
         global_acquisition_bag.append(result.subset_split.get_dataset_indices([winner_index]).item())
 
     assert len(ack_bag) == b
