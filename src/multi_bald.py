@@ -833,8 +833,7 @@ def compute_multi_bald_batch(
                         unit_scale=multi_bald_batch_size,
                     ):
                         joint_entropies_b.copy_(
-                            joint_entropy_sampling.batch(probs_b_K_C.to(device), prev_samples_M_K), non_blocking=True
-                        )
+                            joint_entropy_sampling.batch(probs_b_K_C.to(device), prev_samples_M_K), non_blocking=True)
 
                         # torch_utils.cuda_meminfo()
 
