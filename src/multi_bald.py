@@ -283,9 +283,10 @@ def compute_fass_batch(
         device=device,
     )
 
+    B, K, C = list(result.logits_B_K_C.shape)
     probs_B_C = result.logits_B_K_C.exp_().mean(dim=1)
+    preds_B = probs_B_C.max(dim=-1)[1]
     entropy = -(probs_B_C * probs_B_C.log()).sum(dim=-1)
-    B = entropy.shape[0]
 
     ack_bag = []
     global_acquisition_bag = []
@@ -298,39 +299,43 @@ def compute_fass_batch(
     cand_pts_idx = set(score_sort_idx[:max_entropy_bag_size].cpu().numpy().tolist())
 
     cand_X = []
+    cand_X_preds = []
+    cand_X_idx = []
     for i, (batch, labels) in enumerate(
         with_progress_bar(available_loader, unit_scale=available_loader.batch_size)
     ):
         lower = i * available_loader.batch_size
         upper = min(lower + available_loader.batch_size, B)
         idx_to_extract = np.array(list(set(range(lower, upper)).intersection(cand_pts_idx)), dtype=np.int32)
+        cand_X_preds += [preds_B[idx_to_extract]]
+        cand_X_idx += [torch.from_numpy(idx_to_extract).long()]
         idx_to_extract -= lower
 
         batch = batch.view(batch.shape[0], -1) # batch_size x num_features
         cand_X += [batch[idx_to_extract]]
 
-    cand_X = torch.cat(cand_X, dim=0).unsqueeze(1)
+    cand_X = torch.cat(cand_X, dim=0).unsqueeze(1).to(device)
+    cand_X_preds = torch.cat(cand_X_preds, dim=0).to(device)
+    cand_X_idx = torch.cat(cand_X_idx, dim=0).to(device)
+    sqdist = hsic.sqdist(cand_X, cand_X).mean(-1) # cand_X size x cand_X size
+    max_dist = sqdist.max()
 
+    cand_min_dist = torch.ones((cand_X.shape[0],), device=device) * max_dist
+    ack_bag = []
+    global_acquisition_bag = []
     for ackb_i in range(b):
-        sim_vec = []
-        for i, (batch, labels) in enumerate(
-            with_progress_bar(available_loader, unit_scale=available_loader.batch_size)
-        ):
-            lower = i * available_loader.batch_size
-            upper = min(lower + available_loader.batch_size, B)
-
-            batch = batch.view(batch.shape[0], -1).unsqueeze(1) # batch_size x 1 x num_features
-
-            sqdist = hsic.sqdist(batch, cand_X).mean(-1) # batch_size x cand_X size x 1
-            shp = [batch.shape[0], cand_X.shape[0]]
-            assert list(sqdist.shape) == shp, "%s == %s" % (sqdist.shape, shp)
-
-            sim_vec += [torch.min(sqdist, dim=-1)[0]]
-        sim_vec = torch.cat(sim_vec, dim=0)
-        winner_index = sim_vec.argmin().item()
+        cand_distance = torch.ones((cand_X.shape[0],), device=device) * max_dist
+        for c in range(C):
+            cand_c_idx = cand_X_preds == c
+            if cand_c_idx.long().sum() == 0:
+                continue
+            cand_distance[cand_c_idx] = torch.min(torch.cat([cand_min_dist[cand_c_idx].unsqueeze(-1).repeat([1, sqdist.shape[1]]).unsqueeze(-1), sqdist[cand_c_idx].unsqueeze(-1)], dim=-1), dim=-1)[0].mean(1)
+        cand_distance[ack_bag] = max_dist
+        winner_index = cand_distance.argmin().item()
         ack_bag += [winner_index]
+        #print('cand_distance.shape', cand_distance.shape, winner_index, cand_X_idx.shape)
+        winner_index = cand_X_idx[winner_index].item()
         global_acquisition_bag.append(result.subset_split.get_dataset_indices([winner_index]).item())
-        print('winner score', result.scores_B[winner_index].item(), ', ackb_i', ackb_i)
 
     assert len(ack_bag) == b
     np.set_printoptions(precision=3, suppress=True)
@@ -381,7 +386,7 @@ def compute_multi_hsic_batch4(
     sample_B_K_C = sample_B_K_C[0]
     oh_sample = torch.eye(C)[sample_B_K_C] # B*K x C
     oh_sample = oh_sample.view(B, K, C)
-    sample_B_K_C = oh_sample.to(device)
+    sample_B_K_C = oh_sample#.to(device)
 
     kernel_fn = getattr(hsic, hsic_kernel_name+'_kernels')
 
