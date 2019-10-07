@@ -1,3 +1,4 @@
+import numpy as np
 from dataclasses import dataclass
 import collections
 import enum
@@ -19,6 +20,19 @@ from torch_utils import get_balanced_sample_indices
 from train_model import train_model
 from transformed_dataset import TransformedDataset
 import subrange_dataset
+
+def filter_dataset(dataset, class_select=[0,3,5,7], keep_prob=0.3):
+    keep_prob_dict = {0:1,1:1,2:1,3:1,4:1,5:1,6:1,7:1,8:1,9:1}
+    for class_temp in class_select:
+        keep_prob_dict[class_temp]=keep_prob 
+
+    filter = np.ones(len(dataset),dtype=np.bool)
+    for class_down in keep_prob_dict:
+        filter_class = np.array(dataset.targets)==class_down
+        filter_random = np.random.rand(len(dataset))>keep_prob_dict[class_down]
+        filter = np.logical_and(~np.logical_and(filter_class,filter_random),filter)
+    dataset.data = dataset.data[filter]
+    dataset.targets = np.array(dataset.targets)[filter].tolist()
 
 class EMNIST(datasets.EMNIST):
     url='http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/gzip.zip'
@@ -71,6 +85,7 @@ class DatasetEnum(enum.Enum):
     repeated_mnist_w_noise = "repeated_mnist_w_noise"
     mnist_w_noise = "mnist_w_noise"
     cifar= "cifar"
+    cifar_balanced="cifar_balanced"
 
     def get_data_source(self):
         if self == DatasetEnum.mnist:
@@ -124,17 +139,20 @@ class DatasetEnum(enum.Enum):
             return DataSource(
                 train_dataset=train_dataset, test_dataset=test_dataset, validation_dataset=validation_dataset
             )
-        elif self==DatasetEnum.cifar:
+        elif self in (DatasetEnum.cifar,DatasetEnum.cifar_balanced):
             transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
             train_dataset = datasets.CIFAR10(root='./data', train=True,download=True, transform=transform)
             test_dataset = datasets.CIFAR10(root='./data', train=False,download=True, transform=transform)
+            if self == DatasetEnum.cifar:
+                filter_dataset(train_dataset)
+                #filter_dataset(test_dataset)
             return DataSource(train_dataset=train_dataset, test_dataset=test_dataset)
         else:
             raise NotImplementedError(f"Unknown dataset {self}!")
 
     @property
     def num_classes(self):
-        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise, DatasetEnum.cifar):
+        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise, DatasetEnum.cifar, DatasetEnum.cifar_balanced):
             return 10
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return 47
@@ -147,13 +165,15 @@ class DatasetEnum(enum.Enum):
             return mnist_model.BayesianNet(num_classes=num_classes).to(device)
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return emnist_model.BayesianNet(num_classes=num_classes).to(device)
-        elif self==DatasetEnum.cifar:
+        elif self in (DatasetEnum.cifar,DatasetEnum.cifar_balanced):
             return cifar_model.BayesianNet(num_classes=num_classes).to(device)
         else:
             raise NotImplementedError(f"Unknown dataset {self}!")
 
     def create_optimizer(self, model):
-        optimizer = optim.Adam(model.parameters())
+        optimizer = optim.Adam(model.parameters())#,lr=1e-2)
+        #optimizer1 = optim.SGD(model.parameters(),lr=0.1, momentum=0.9, weight_decay=5e-4) 
+        #optimizer = optim.lr_scheduler.CosineAnnealingLR(optimizer1, T_max=50, eta_min=0, last_epoch=-1)
         return optimizer
 
     def create_train_model_extra_args(self, optimizer):

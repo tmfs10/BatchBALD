@@ -156,7 +156,7 @@ def create_experiment_config_argparser(parser):
     parser.add_argument(
         "--fass_entropy_bag_size_factor",
         type=float,
-        default=2.0,
+        default=30,
     )
 
     return parser
