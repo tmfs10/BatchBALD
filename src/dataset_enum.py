@@ -85,7 +85,7 @@ class DatasetEnum(enum.Enum):
     repeated_mnist_w_noise = "repeated_mnist_w_noise"
     mnist_w_noise = "mnist_w_noise"
     cifar= "cifar"
-    cifar_balanced="cifar_balanced"
+    cifar_unbalanced="cifar_unbalanced"
 
     def get_data_source(self):
         if self == DatasetEnum.mnist:
@@ -139,11 +139,11 @@ class DatasetEnum(enum.Enum):
             return DataSource(
                 train_dataset=train_dataset, test_dataset=test_dataset, validation_dataset=validation_dataset
             )
-        elif self in (DatasetEnum.cifar,DatasetEnum.cifar_balanced):
+        elif self in (DatasetEnum.cifar,DatasetEnum.cifar_unbalanced):
             transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
             train_dataset = datasets.CIFAR10(root='./data', train=True,download=True, transform=transform)
             test_dataset = datasets.CIFAR10(root='./data', train=False,download=True, transform=transform)
-            if self == DatasetEnum.cifar:
+            if self == DatasetEnum.cifar_unbalanced:
                 filter_dataset(train_dataset)
                 #filter_dataset(test_dataset)
             return DataSource(train_dataset=train_dataset, test_dataset=test_dataset)
@@ -152,7 +152,7 @@ class DatasetEnum(enum.Enum):
 
     @property
     def num_classes(self):
-        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise, DatasetEnum.cifar, DatasetEnum.cifar_balanced):
+        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise, DatasetEnum.cifar, DatasetEnum.cifar_unbalanced):
             return 10
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return 47
@@ -165,7 +165,7 @@ class DatasetEnum(enum.Enum):
             return mnist_model.BayesianNet(num_classes=num_classes).to(device)
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return emnist_model.BayesianNet(num_classes=num_classes).to(device)
-        elif self in (DatasetEnum.cifar,DatasetEnum.cifar_balanced):
+        elif self in (DatasetEnum.cifar,DatasetEnum.cifar_unbalanced):
             return cifar_model.BayesianNet(num_classes=num_classes).to(device)
         else:
             raise NotImplementedError(f"Unknown dataset {self}!")

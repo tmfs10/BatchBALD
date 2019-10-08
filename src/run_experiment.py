@@ -11,7 +11,7 @@ from torch_utils import get_base_indices
 import torch.utils.data as data
 
 from acquisition_functions import AcquisitionFunction
-
+from reduced_consistent_mc_sampler import reduced_eval_consistent_bayesian_model
 from blackhc import laaos
 
 # NOTE(blackhc): get the directory right (oh well)
@@ -292,7 +292,20 @@ def main():
                 log_interval,
                 device,
             )
-
+        target_size = max(args.min_candidates_per_acquired_item * args.available_sample_k, len(available_loader.dataset) * args.min_remaining_percentage // 100)
+        result = reduced_eval_consistent_bayesian_model(
+            bayesian_model=model,
+            acquisition_function=AcquisitionFunction.predictive_entropy,
+            num_classes=dataset.num_classes,
+            k=args.num_inference_samples,
+            initial_percentage=args.initial_percentage,
+            reduce_percentage=args.reduce_percentage,
+            target_size=target_size,
+            available_loader=available_loader,
+            device=device,
+        )
+        print("entropy score shape:",result.scores_B.numpy().shape)
+        entropy_score = result.scores_B.numpy().mean()
         with ContextStopwatch() as batch_acquisition_stopwatch:
             batch = acquisition_method.acquire_batch(
                 bayesian_model=model,
@@ -322,6 +335,7 @@ def main():
             dict(
                 num_epochs=num_epochs,
                 test_metrics=test_metrics,
+                active_entropy=entropy_score,
                 chosen_targets=acquired_targets,
                 chosen_samples=original_batch_indices,
                 chosen_samples_score=batch.scores,

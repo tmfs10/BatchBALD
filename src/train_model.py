@@ -2,6 +2,7 @@ import ignite
 from torch import optim as optim
 from torch.nn import functional as F
 from torch import nn
+import torch
 
 import ignite_restoring_score_guard
 from ignite_progress_bar import ignite_progress_bar
@@ -9,6 +10,27 @@ from ignite_utils import epoch_chain, chain, log_epoch_results, store_epoch_resu
 from sampler_model import SamplerModel, NoDropoutModel
 from typing import NamedTuple
 
+class Entropy(ignite.metrics.Metric):
+    """
+    Calculates the entropy of the prediction.
+
+    - `update` must receive output of the form `(y_pred, y)`.
+    """
+    def reset(self):
+        self._sum_of_entropy = 0
+        self._num_examples = 0
+
+    def update(self, output):
+        y_pred, y = output
+        entropy = torch.sum(-(torch.exp(y_pred)*y_pred), dim=1)
+        self._sum_of_entropy += torch.sum(entropy).item()
+        self._num_examples += y_pred.shape[0]
+
+    def compute(self):
+        if self._num_examples == 0:
+            raise NotComputableError("Enropy must have at"
+                                     "least one example before it can be computed.")
+        return self._sum_of_entropy / self._num_examples
 
 class TrainModelResult(NamedTuple):
     num_epochs: int
@@ -16,7 +38,7 @@ class TrainModelResult(NamedTuple):
 
 
 def build_metrics():
-    return {"accuracy": ignite.metrics.Accuracy(), "nll": ignite.metrics.Loss(F.nll_loss)}
+    return {"accuracy": ignite.metrics.Accuracy(), "nll": ignite.metrics.Loss(F.nll_loss), "entropy":Entropy()}
 
 
 def train_model(
