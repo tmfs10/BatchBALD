@@ -61,7 +61,7 @@ class AcquisitionMethod(enum.Enum):
                 device=device,
             )
         elif self == self.hsicbald:
-            return multi_bald.compute_multi_hsic_batch4(
+            return multi_bald.compute_ical_hsic_batch(
                 bayesian_model=bayesian_model,
                 available_loader=available_loader,
                 num_classes=num_classes,

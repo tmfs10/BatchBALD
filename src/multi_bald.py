@@ -345,7 +345,7 @@ def compute_fass_batch(
 
     return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None)
 
-def compute_multi_hsic_batch4(
+def compute_ical_hsic_batch(
     bayesian_model: nn.Module,
     available_loader,
     num_classes,
