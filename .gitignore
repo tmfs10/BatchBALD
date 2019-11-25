@@ -25,7 +25,7 @@ log/
 *.pdf
 *.swo
 output_*
-chemical_vae
+run_scripts
 plots
 
 # Do not include automake output

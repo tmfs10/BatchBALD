@@ -307,7 +307,7 @@ def main():
         print("entropy score shape:",result.scores_B.numpy().shape)
         entropy_score = result.scores_B.numpy().mean()
         with ContextStopwatch() as batch_acquisition_stopwatch:
-            batch = acquisition_method.acquire_batch(
+            batch, time_taken = acquisition_method.acquire_batch(
                 bayesian_model=model,
                 acquisition_function=acquisition_function,
                 available_loader=available_loader,

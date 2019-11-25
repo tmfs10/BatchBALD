@@ -9,6 +9,7 @@ import joint_entropy.exact as joint_entropy_exact
 import joint_entropy.sampling as joint_entropy_sampling
 import torch_utils
 import math
+import time
 import hsic
 
 from acquisition_batch import AcquisitionBatch
@@ -283,6 +284,8 @@ def compute_fass_batch(
         device=device,
     )
 
+    start_time = time.process_time()
+
     B, K, C = list(result.logits_B_K_C.shape)
     probs_B_C = result.logits_B_K_C.exp_().mean(dim=1)
     preds_B = probs_B_C.max(dim=-1)[1]
@@ -343,7 +346,10 @@ def compute_fass_batch(
     #for i in range(len(ack_bag)):
     #    print('ack_i', i, probs_B_K_C[ack_bag[i]].cpu().numpy())
 
-    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None)
+    end_time = time.process_time()
+    time_taken = end_time-start_time
+    print('ack time taken', time_taken)
+    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None), time_taken
 
 def compute_ical_hsic_batch(
     bayesian_model: nn.Module,
@@ -373,6 +379,8 @@ def compute_ical_hsic_batch(
         available_loader=available_loader,
         device=device,
     )
+
+    start_time = time.process_time()
 
     probs_B_K_C = result.logits_B_K_C.exp_()
     B, K, C = list(result.logits_B_K_C.shape)
@@ -478,7 +486,11 @@ def compute_ical_hsic_batch(
     #print('Acquired predictions')
     #for i in range(len(ack_bag)):
     #    print('ack_i', i, probs_B_K_C[ack_bag[i]].cpu().numpy())
-    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None)
+
+    end_time = time.process_time()
+    time_taken = end_time-start_time
+    print('ack time taken', time_taken)
+    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None), time_taken
 
 def compute_multi_hsic_batch2(
     bayesian_model: nn.Module,
@@ -752,6 +764,7 @@ def compute_multi_bald_batch(
         available_loader=available_loader,
         device=device,
     )
+    start_time = time.process_time()
 
     subset_split = result.subset_split
 
@@ -877,7 +890,11 @@ def compute_multi_bald_batch(
 
             print(f"Acquisition bag: {sorted(global_acquisition_bag)}, num_ack: {i}")
 
-    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None)
+    end_time = time.process_time()
+    time_taken = end_time-start_time
+    print('ack time taken', time_taken)
+
+    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None), time_taken
 
 
 def batch_exact_joint_entropy(probs_B_K_C, prev_joint_probs_M_K, chunk_size, device, out_joint_entropies_B):
