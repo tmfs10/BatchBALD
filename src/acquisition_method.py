@@ -12,6 +12,7 @@ class AcquisitionMethod(enum.Enum):
     independent = "independent"
     multibald = "multibald"
     hsicbald = "hsicbald"
+    icalscale = "icalscale"
     fass = "fass"
     acsfw = "acsfw"
 
@@ -27,6 +28,7 @@ class AcquisitionMethod(enum.Enum):
         min_remaining_percentage,
         initial_percentage,
         reduce_percentage,
+        max_batch_compute_size=None,
         hsic_compute_batch_size=None,
         hsic_kernel_name=None,
         hsic_resample=True,
@@ -71,6 +73,22 @@ class AcquisitionMethod(enum.Enum):
                 initial_percentage=initial_percentage,
                 reduce_percentage=reduce_percentage,
                 target_size=target_size,
+                hsic_compute_batch_size=hsic_compute_batch_size,
+                hsic_kernel_name=hsic_kernel_name,
+                hsic_resample=hsic_resample,
+                device=device,
+            )
+        elif self == self.icalscale:
+            return multi_bald.compute_ical_hsic_batch_scale(
+                bayesian_model=bayesian_model,
+                available_loader=available_loader,
+                num_classes=num_classes,
+                k=k,
+                b=b,
+                initial_percentage=initial_percentage,
+                reduce_percentage=reduce_percentage,
+                target_size=target_size,
+                max_batch_compute_size=max_batch_compute_size,
                 hsic_compute_batch_size=hsic_compute_batch_size,
                 hsic_kernel_name=hsic_kernel_name,
                 hsic_resample=hsic_resample,

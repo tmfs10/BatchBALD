@@ -132,6 +132,13 @@ def create_experiment_config_argparser(parser):
         default=1000,
     )
 
+    # HSIC arguments
+    parser.add_argument(
+        "--max_batch_compute_size",
+        type=int,
+        default=20,
+    )
+
     def str2bool(v):
         if v.lower() in ('true', '1', 'y', 'yes'):
             return True
@@ -318,6 +325,7 @@ def main():
                 min_remaining_percentage=args.min_remaining_percentage,
                 initial_percentage=args.initial_percentage,
                 reduce_percentage=args.reduce_percentage,
+                max_batch_compute_size=args.max_batch_compute_size,
                 hsic_compute_batch_size=args.hsic_compute_batch_size,
                 hsic_kernel_name=args.hsic_kernel_name,
                 fass_entropy_bag_size_factor=args.fass_entropy_bag_size_factor,
