@@ -86,7 +86,7 @@ class DatasetEnum(enum.Enum):
     mnist_w_noise = "mnist_w_noise"
     cifar= "cifar"
     cifar_unbalanced="cifar_unbalanced"
-
+    fmnist ='fmnist'
     def get_data_source(self):
         if self == DatasetEnum.mnist:
             return get_MNIST()
@@ -147,12 +147,17 @@ class DatasetEnum(enum.Enum):
                 filter_dataset(train_dataset)
                 #filter_dataset(test_dataset)
             return DataSource(train_dataset=train_dataset, test_dataset=test_dataset)
+        elif self==DatasetEnum.fmnist:
+            transform=transforms.ToTensor()
+            train_dataset = datasets.FashionMNIST(root='./data',train=True,transform= transform,download=True)
+            test_dataset = datasets.FashionMNIST(root='./data',train=False,transform= transform,download=True)
+            return DataSource(train_dataset=train_dataset, test_dataset=test_dataset)
         else:
             raise NotImplementedError(f"Unknown dataset {self}!")
 
     @property
     def num_classes(self):
-        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise, DatasetEnum.cifar, DatasetEnum.cifar_unbalanced):
+        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise, DatasetEnum.cifar, DatasetEnum.cifar_unbalanced,DatasetEnum.fmnist):
             return 10
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return 47
@@ -161,7 +166,7 @@ class DatasetEnum(enum.Enum):
 
     def create_bayesian_model(self, device):
         num_classes = self.num_classes
-        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise):
+        if self in (DatasetEnum.mnist, DatasetEnum.repeated_mnist_w_noise, DatasetEnum.mnist_w_noise,DatasetEnum.fmnist):
             return mnist_model.BayesianNet(num_classes=num_classes).to(device)
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return emnist_model.BayesianNet(num_classes=num_classes).to(device)

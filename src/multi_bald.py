@@ -305,7 +305,7 @@ class ProjectedFrankWolfe(object):
             else:
                 raise NotImplementedError
 
-        return torch.sqrt(1 / torch.FloatTensor([J], device=logits.device)) * torch.cat(projections, dim=1), ent_x
+        return torch.sqrt(1 / torch.DoubleTensor([J], device=logits.device)) * torch.cat(projections, dim=1), ent_x
 
     def _init_build(self, M, **kwargs):
         pass  # unused
