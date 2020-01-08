@@ -13,6 +13,7 @@ class AcquisitionMethod(enum.Enum):
     multibald = "multibald"
     hsicbald = "hsicbald"
     fass = "fass"
+    acsfw = "acsfw"
 
     def acquire_batch(
         self,
@@ -77,6 +78,19 @@ class AcquisitionMethod(enum.Enum):
             )
         elif self == self.fass:
             return multi_bald.compute_fass_batch(
+                bayesian_model=bayesian_model,
+                available_loader=available_loader,
+                num_classes=num_classes,
+                k=k,
+                b=b,
+                initial_percentage=initial_percentage,
+                reduce_percentage=reduce_percentage,
+                target_size=target_size,
+                max_entropy_bag_size=int(b*fass_entropy_bag_size_factor),
+                device=device,
+            )
+        elif self == self.acsfw:
+            return multi_bald.compute_acs_fw_batch(
                 bayesian_model=bayesian_model,
                 available_loader=available_loader,
                 num_classes=num_classes,

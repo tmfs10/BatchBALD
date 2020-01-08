@@ -260,6 +260,155 @@ def compute_multi_hsic_batch(
 
     return AcquisitionBatch(ack_bag, acquisition_bag_scores, None)
 
+
+class ProjectedFrankWolfe(object):
+    def __init__(self, py, logits, J, **kwargs):
+        """
+        Constructs a batch of points using ACS-FW with random projections. Note the slightly different interface.
+        :param data: (ActiveLearningDataset) Dataset.
+        :param J: (int) Number of projections.
+        :param kwargs: (dict) Additional arguments.
+        """
+        self.softmax = nn.Softmax()
+        self.relu = nn.ReLU()
+        self.cross_entropy = nn.CrossEntropyLoss(reduction='none')
+        self.device = logits.device
+
+        self.ELn, self.entropy = self.get_projections(py, logits, J, **kwargs)
+        squared_norm = torch.sum(self.ELn * self.ELn, dim=-1)
+        self.sigmas = torch.sqrt(squared_norm + 1e-6)
+        self.sigma = self.sigmas.sum()
+        self.EL = torch.sum(self.ELn, dim=0)
+
+    def get_projections(self, py, logits, J, projection='two', gamma=0, **kwargs):
+        """
+        Get projections for ACS approximate procedure
+        :param J: (int) Number of projections to use
+        :param projection: (str) Type of projection to use (currently only 'two' supported)
+        :return: (torch.tensor) Projections
+        """
+        assert logits.shape[1] == J
+        C = logits.shape[-1]
+        ent = lambda py: torch.distributions.Categorical(probs=py).entropy()
+        projections = []
+        feat_x = []
+        with torch.no_grad():
+            ent_x = ent(py)
+            if projection == 'two':
+                for j in range(J):
+                    cur_logits = logits[:, j, :]
+                    ys = torch.ones_like(cur_logits).type(torch.LongTensor) * torch.arange(C, device=logits.device)[None, :]
+                    ys = ys.t()
+                    loglik = torch.stack([-self.cross_entropy(cur_logits, y) for y in ys]).t()
+                    loglik = torch.sum(py * loglik, dim=-1, keepdim=True)
+                    projections.append(loglik + gamma * ent_x[:, None])
+            else:
+                raise NotImplementedError
+
+        return torch.sqrt(1 / torch.FloatTensor([J], device=logits.device)) * torch.cat(projections, dim=1), ent_x
+
+    def _init_build(self, M, **kwargs):
+        pass  # unused
+
+    def build(self, M=1, **kwargs):
+        """
+        Constructs a batch of points to sample from the unlabeled set.
+        :param M: (int) Batch size.
+        :param kwargs: (dict) Additional parameters.
+        :return: (list of ints) Selected data point indices.
+        """
+        self._init_build(M, **kwargs)
+        w = torch.zeros([len(self.ELn), 1], device=self.device).double()
+        norm = lambda weights: (self.EL - (self.ELn.t() @ weights).squeeze()).norm()
+        for m in range(M):
+            w = self._step(m, w)
+
+        # print(w[w.nonzero()[:, 0]].cpu().numpy())
+        print('|| L-L(w)  ||: {:.4f}'.format(norm(w)))
+        print('|| L-L(w1) ||: {:.4f}'.format(norm((w > 0).double())))
+        print('Avg pred entropy (pool): {:.4f}'.format(self.entropy.mean().item()))
+        print('Avg pred entropy (batch): {:.4f}'.format(self.entropy[w.flatten() > 0].mean().item()))
+
+        return w.nonzero()[:, 0].cpu().numpy()
+
+    def _step(self, m, w, **kwargs):
+        """
+        Applies one step of the Frank-Wolfe algorithm to update weight vector w.
+        :param m: (int) Batch iteration.
+        :param w: (numpy array) Current weight vector.
+        :param kwargs: (dict) Additional arguments.
+        :return: (numpy array) Weight vector after adding m-th data point to the batch.
+        """
+        #print(self.ELn.type(), w.type())
+        self.ELw = (self.ELn.t() @ w).squeeze()
+        scores = (self.ELn / self.sigmas[:, None]) @ (self.EL - self.ELw)
+        f = torch.argmax(scores)
+        gamma, f1 = self.compute_gamma(f, w)
+        # print('f: {}, gamma: {:.4f}, score: {:.4f}'.format(f, gamma.item(), scores[f].item()))
+        if np.isnan(gamma.cpu()):
+            raise ValueError
+
+        w = (1 - gamma) * w + gamma * (self.sigma / self.sigmas[f]) * f1
+        return w
+
+    def compute_gamma(self, f, w):
+        """
+        Computes line-search parameter gamma.
+        :param f: (int) Index of selected data point.
+        :param w: (numpy array) Current weight vector.
+        :return: (float, numpy array) Line-search parameter gamma and f-th unit vector [0, 0, ..., 1, ..., 0]
+        """
+        f1 = torch.zeros_like(w)
+        f1[f] = 1
+        Lf = (self.sigma / self.sigmas[f] * f1.t() @ self.ELn).squeeze()
+        Lfw = Lf - self.ELw
+        numerator = Lfw @ (self.EL - self.ELw)
+        denominator = Lfw @ Lfw
+        return numerator / denominator, f1
+
+def compute_acs_fw_batch(
+    bayesian_model: nn.Module,
+    available_loader,
+    num_classes,
+    k,
+    b,
+    target_size,
+    initial_percentage,
+    reduce_percentage,
+    max_entropy_bag_size,
+    device=None,
+) -> AcquisitionBatch:
+    result = reduced_eval_consistent_bayesian_model(
+        bayesian_model=bayesian_model,
+        acquisition_function=AcquisitionFunction.bald,
+        num_classes=num_classes,
+        k=k,
+        initial_percentage=initial_percentage,
+        reduce_percentage=reduce_percentage,
+        target_size=target_size,
+        available_loader=available_loader,
+        device=device,
+    )
+
+    start_time = time.process_time()
+
+    B, K, C = list(result.logits_B_K_C.shape) # (pool size, mc dropout samples, classes)
+    py = result.logits_B_K_C.exp_().mean(dim=1)
+
+    num_projections=10
+    gamma=0.7
+    assert K >= num_projections
+    cs = ProjectedFrankWolfe(py, result.logits_B_K_C[:, :num_projections, :], num_projections, gamma=gamma)
+
+    end_time = time.process_time()
+    time_taken = end_time-start_time
+    print('ack time taken', time_taken)
+
+    global_acquisition_bag = cs.build(b)
+    acquisition_bag_scores = []
+
+    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None), time_taken
+
 def compute_fass_batch(
     bayesian_model: nn.Module,
     available_loader,
