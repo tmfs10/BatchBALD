@@ -401,10 +401,9 @@ def compute_acs_fw_batch(
     cs = ProjectedFrankWolfe(py, result.logits_B_K_C[:, :num_projections, :], num_projections, gamma=gamma)
 
     end_time = time.process_time()
-    print('ack time taken', time_taken)
-
     global_acquisition_bag = cs.build(b)
     time_taken = end_time-start_time
+    print('ack time taken', time_taken)
     acquisition_bag_scores = []
 
     return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None), time_taken
