@@ -332,7 +332,7 @@ def main():
                 hsic_resample=args.hsic_resample,
                 device=device,
             )
-            if len(ret) == 2:
+            if type(ret) is tuple:
                 batch, time_taken = ret
             else:
                 batch = ret
