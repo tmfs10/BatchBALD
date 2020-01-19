@@ -401,7 +401,15 @@ def compute_acs_fw_batch(
     cs = ProjectedFrankWolfe(py, result.logits_B_K_C[:, :num_projections, :], num_projections, gamma=gamma)
 
     end_time = time.process_time()
-    global_acquisition_bag = cs.build(b)
+    global_acquisition_bag = cs.build(M=b)
+    s = set(global_acquisition_bag)
+    perm = torch.randperm(B)
+    bi = 0
+    while len(global_acquisition_bag) < b:
+        if perm[bi] not in s:
+            global_acquisition_bag += [perm[bi]]
+            s.add(perm[bi])
+        bi += 1
     time_taken = end_time-start_time
     print('ack time taken', time_taken)
     acquisition_bag_scores = []
