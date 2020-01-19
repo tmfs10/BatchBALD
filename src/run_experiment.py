@@ -314,7 +314,7 @@ def main():
         print("entropy score shape:",result.scores_B.numpy().shape)
         entropy_score = result.scores_B.numpy().mean()
         with ContextStopwatch() as batch_acquisition_stopwatch:
-            batch, time_taken = acquisition_method.acquire_batch(
+            ret = acquisition_method.acquire_batch(
                 bayesian_model=model,
                 acquisition_function=acquisition_function,
                 available_loader=available_loader,
@@ -332,6 +332,10 @@ def main():
                 hsic_resample=args.hsic_resample,
                 device=device,
             )
+            if len(ret) == 2:
+                batch, time_taken = ret
+            else:
+                batch = ret
 
         original_batch_indices = get_base_indices(experiment_data.available_dataset, batch.indices)
         print(f"Acquiring indices {original_batch_indices}")
