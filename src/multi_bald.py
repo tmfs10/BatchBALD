@@ -401,7 +401,7 @@ def compute_acs_fw_batch(
     cs = ProjectedFrankWolfe(py, result.logits_B_K_C[:, :num_projections, :], num_projections, gamma=gamma)
 
     end_time = time.process_time()
-    global_acquisition_bag = cs.build(M=b)
+    global_acquisition_bag = cs.build(M=b).tolist()
     s = set(global_acquisition_bag)
     perm = torch.randperm(B)
     bi = 0
