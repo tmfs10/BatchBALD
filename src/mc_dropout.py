@@ -116,7 +116,7 @@ class _MCDropout(Module):
             mask = self.mask
 
         mc_input = BayesianModule.unflatten_tensor(input, k)
-        mc_output = mc_input.masked_fill(mask, 0) / (1 - self.p)
+        mc_output = mc_input.masked_fill(mask.bool(), 0) / (1 - self.p)
 
         # Flatten MCDI, batch into one dimension again.
         return BayesianModule.flatten_tensor(mc_output)
