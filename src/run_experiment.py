@@ -52,6 +52,7 @@ def create_experiment_config_argparser(parser):
     parser.add_argument("--quickquick", action="store_true", default=False, help="uses a very reduced dataset")
     parser.add_argument("--seed", type=int, default=1, help="random seed")
     parser.add_argument("--fix_numpy_python_seed", action="store_true", default=False, help="fixes seed for numpy and python as well")
+    parser.add_argument("--cudnn_deterministic", action="store_true", default=False, help="fixes seed for numpy and python as well")
     parser.add_argument(
         "--log_interval", type=int, default=10, help="how many batches to wait before logging training status"
     )
@@ -231,6 +232,8 @@ def main():
     if args.fix_numpy_python_seed:
         np.random.seed(args.seed)
         random.seed(args.seed)
+    if args.cudnn_deterministic:
+        torch.backends.cudnn.deterministic = True
 
     device = torch.device("cuda" if use_cuda else "cpu")
 
