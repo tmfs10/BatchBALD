@@ -51,6 +51,7 @@ def create_experiment_config_argparser(parser):
     parser.add_argument("--no_cuda", action="store_true", default=False, help="disables CUDA training")
     parser.add_argument("--quickquick", action="store_true", default=False, help="uses a very reduced dataset")
     parser.add_argument("--seed", type=int, default=1, help="random seed")
+    parser.add_argument("--fix_numpy_python_seed", action="store_true", default=False, help="fixes seed for numpy and python as well")
     parser.add_argument(
         "--log_interval", type=int, default=10, help="how many batches to wait before logging training status"
     )
@@ -226,8 +227,10 @@ def main():
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
     torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-    random.seed(args.seed)
+    
+    if args.fix_numpy_python_seed:
+        np.random.seed(args.seed)
+        random.seed(args.seed)
 
     device = torch.device("cuda" if use_cuda else "cpu")
 
