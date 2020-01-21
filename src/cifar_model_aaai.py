@@ -1,23 +1,38 @@
 from torch import nn as nn, Tensor
 from torch.nn import functional as F
-#from torchvision import models
-import resnet
+
+# from torchvision import models
+
 import mc_dropout
 
 
 class BayesianNet(mc_dropout.BayesianModule):
     def __init__(self, num_classes):
         super().__init__(num_classes)
+
         self.num_classes = num_classes
-        self.resnet = resnet.ResNet18(num_classes=512)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3)
+        #self.conv1_drop = mc_dropout.MCDropout2d()
+        self.conv2 = nn.Conv2d(32, 32, kernel_size=3)
+        self.conv2_drop = mc_dropout.MCDropout2d()
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3)
+        #self.conv3_drop = mc_dropout.MCDropout2d()
+        self.conv4 = nn.Conv2d(64, 64, kernel_size=3)
+        self.conv4_drop = mc_dropout.MCDropout2d()
+        self.fc1 = nn.Linear(64 * 5 * 5, 512)
         self.fc1_drop = mc_dropout.MCDropout()
-        self.fc1 = nn.Linear(512, 256)
-        self.fc2_drop = mc_dropout.MCDropout()
-        self.fc2 = nn.Linear(256, num_classes)
+        self.fc2 = nn.Linear(512, num_classes)
     def mc_forward_impl(self, input: Tensor):
-        input = self.resnet(input)
-        input = self.fc1_drop(F.relu(input))
-        input = self.fc2_drop(F.relu(self.fc1(input)))
+        input = F.relu(self.conv1(input))
+ #       input = F.relu(self.conv2_drop(F.max_pool2d(self.conv2(input), 2)))
+        input = self.conv2_drop(F.max_pool2d(F.relu(self.conv2(input)), 2))
+        input = F.relu(self.conv3(input))
+        input = self.conv4_drop(F.max_pool2d(F.relu(self.conv4(input)), 2))
+ #       input = F.relu(self.conv4_drop(F.max_pool2d(self.conv4(input), 2)))
+
+        input = input.view(-1, 64 * 5 * 5)
+#        input = F.relu(self.fc1_drop(self.fc1(input)))
+        input = self.fc1_drop(F.relu(self.fc1(input)))
         input = self.fc2(input)
         input = F.log_softmax(input, dim=1)
         return input

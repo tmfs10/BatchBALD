@@ -9,7 +9,8 @@ from dataset_enum import DatasetEnum, get_targets, get_experiment_data, train_mo
 from random_fixed_length_sampler import RandomFixedLengthSampler
 from torch_utils import get_base_indices
 import torch.utils.data as data
-
+import numpy as np
+import random
 from acquisition_functions import AcquisitionFunction
 from reduced_consistent_mc_sampler import reduced_eval_consistent_bayesian_model
 from blackhc import laaos
@@ -234,7 +235,7 @@ def main():
         random.seed(args.seed)
     if args.cudnn_deterministic:
         torch.backends.cudnn.deterministic = True
-
+        #torch.backends.cudnn.benchmark = False
     device = torch.device("cuda" if use_cuda else "cpu")
 
     print(f"Using {device} for computations")
