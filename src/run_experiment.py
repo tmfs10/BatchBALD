@@ -1,4 +1,6 @@
 import argparse
+import numpy as np
+import random
 import sys
 import torch
 from gpu_utils.utils import gpu_init, nvidia_smi
@@ -139,6 +141,12 @@ def create_experiment_config_argparser(parser):
         "--max_batch_compute_size",
         type=int,
         default=20,
+    )
+
+    parser.add_argument(
+        "--ical_max_greedy_iterations",
+        type=int,
+        default=0,
     )
 
     def str2bool(v):
@@ -338,6 +346,7 @@ def main():
                 hsic_kernel_name=args.hsic_kernel_name,
                 fass_entropy_bag_size_factor=args.fass_entropy_bag_size_factor,
                 hsic_resample=args.hsic_resample,
+                ical_max_greedy_iterations=args.ical_max_greedy_iterations,
                 device=device,
             )
             if type(ret) is tuple:

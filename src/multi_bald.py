@@ -427,6 +427,7 @@ def compute_fass_batch(
     initial_percentage,
     reduce_percentage,
     max_entropy_bag_size,
+    fass_compute_batch_size,
     device=None,
 ) -> AcquisitionBatch:
     result = reduced_eval_consistent_bayesian_model(
@@ -477,7 +478,16 @@ def compute_fass_batch(
     cand_X = torch.cat(cand_X, dim=0).unsqueeze(1).to(device)
     cand_X_preds = torch.cat(cand_X_preds, dim=0).to(device)
     cand_X_idx = torch.cat(cand_X_idx, dim=0).to(device)
-    sqdist = hsic.sqdist(cand_X, cand_X).mean(-1) # cand_X size x cand_X size
+
+    num_cands = cand_X.shape[0]
+    if num_cands > fass_compute_batch_size and fass_compute_batch_size > 0:
+        sqdist = []
+        for bs in range(0, num_cands, fass_compute_batch_size):
+            be = min(num_cands, bs+fass_compute_batch_size)
+            sqdist += [hsic.sqdist(cand_X[bs:be], cand_X).mean(-1).cpu()]
+    else:
+        sqdist = hsic.sqdist(cand_X, cand_X).mean(-1) # cand_X size x cand_X size
+    sqdist = torch.cat(sqdist, dim=0).to(device)
     max_dist = sqdist.max()
 
     cand_min_dist = torch.ones((cand_X.shape[0],), device=device) * max_dist
@@ -489,7 +499,13 @@ def compute_fass_batch(
             cand_c_idx = cand_X_preds == c
             if cand_c_idx.long().sum() == 0:
                 continue
-            cand_distance[cand_c_idx] = torch.min(torch.cat([cand_min_dist[cand_c_idx].unsqueeze(-1).repeat([1, sqdist.shape[1]]).unsqueeze(-1), sqdist[cand_c_idx].unsqueeze(-1)], dim=-1), dim=-1)[0].mean(1)
+            cand_distance[cand_c_idx] = torch.min(
+                    torch.cat(
+                    [
+                        cand_min_dist[cand_c_idx].unsqueeze(-1).repeat([1, sqdist.shape[1]]).unsqueeze(-1), 
+                        sqdist[cand_c_idx].unsqueeze(-1)
+                    ], dim=-1), 
+                dim=-1)[0].mean(1)
         cand_distance[ack_bag] = max_dist
         winner_index = cand_distance.argmin().item()
         ack_bag += [winner_index]
@@ -777,6 +793,163 @@ def compute_ical_hsic_batch_scale(
                 batch_kernel = batch_kernel[:, :, idxes]
 
         result.scores_B[winner_index] = -math.inf
+        score_sort = torch.sort(result.scores_B, descending=True)
+        score_sort_idx = score_sort[1]
+        score_sort = score_sort[0]
+        #indices_to_condense = [idx.item() for idx in score_sort_idx[:num_to_condense]]
+        if hsic_resample:
+            indices_to_condense = np.random.randint(low=0, high=score_sort_idx.shape[0], size=num_to_condense)
+
+    assert len(ack_bag) == b
+    np.set_printoptions(precision=3, suppress=True)
+    #print('Acquired predictions')
+    #for i in range(len(ack_bag)):
+    #    print('ack_i', i, probs_B_K_C[ack_bag[i]].cpu().numpy())
+
+    end_time = time.process_time()
+    time_taken = end_time-start_time
+    print('ack time taken', time_taken)
+    return AcquisitionBatch(global_acquisition_bag, acquisition_bag_scores, None), time_taken
+
+def compute_ical_hsic_batch_scale2(
+    bayesian_model: nn.Module,
+    available_loader,
+    num_classes,
+    k,
+    b,
+    target_size,
+    initial_percentage,
+    reduce_percentage,
+    max_batch_compute_size,
+    hsic_compute_batch_size,
+    hsic_kernel_name,
+    max_greedy_iterations=0,
+    hsic_resample=True,
+    device=None,
+) -> AcquisitionBatch:
+    assert hsic_compute_batch_size is not None
+    assert hsic_kernel_name is not None
+
+    result = reduced_eval_consistent_bayesian_model(
+        bayesian_model=bayesian_model,
+        acquisition_function=AcquisitionFunction.bald,
+        num_classes=num_classes,
+        k=k,
+        initial_percentage=initial_percentage,
+        reduce_percentage=reduce_percentage,
+        target_size=target_size,
+        available_loader=available_loader,
+        device=device,
+    )
+
+    start_time = time.process_time()
+
+    probs_B_K_C = result.logits_B_K_C.exp_()
+    B, K, C = list(result.logits_B_K_C.shape)
+
+    #sample_B_K_C = probs_B_K_C
+    sample_B_K_C = result.logits_B_K_C
+
+    dist_B_K_C = tdist.categorical.Categorical(result.logits_B_K_C.view(-1, C)) # shape B*K x C
+    sample_B_K_C = dist_B_K_C.sample([1]) # shape 1 x B*K
+    assert list(sample_B_K_C.shape) == [1, B*K]
+    sample_B_K_C = sample_B_K_C[0]
+    oh_sample = torch.eye(C)[sample_B_K_C] # B*K x C
+    oh_sample = oh_sample.view(B, K, C)
+    sample_B_K_C = oh_sample#.to(device)
+
+    kernel_fn = getattr(hsic, hsic_kernel_name+'_kernels')
+
+    dist_matrices = []
+    bs = 0
+    while bs < B:
+        be = min(B, bs+hsic_compute_batch_size)
+        dist_matrix = hsic.sqdist(sample_B_K_C[bs:be].permute([1, 0, 2])) # n=K, d=B, k=C
+        dist_matrices += [dist_matrix]
+        bs = be
+    dist_matrices = torch.cat(dist_matrices, dim=-1)#.to(device)
+
+    bs = 0
+    while bs < B:
+        be = min(B, bs+hsic_compute_batch_size)
+        dist_matrices[:, :, bs:be] = kernel_fn(dist_matrices[:, :, bs:be])
+        bs = be
+    kernel_matrices = dist_matrices.permute([2, 0, 1]).to(device) # B, K, K
+    assert list(kernel_matrices.shape) == [B, K, K], "%s == %s" % (kernel_matrices.shape, [B, K, K])
+
+    ack_bag = []
+    global_acquisition_bag = []
+    acquisition_bag_scores = []
+    batch_kernel = None
+    print('Computing HSIC for', B, 'points')
+
+    num_to_condense = 200
+
+    score_sort = torch.sort(result.scores_B, descending=True)
+    score_sort_idx = score_sort[1]
+    score_sort = score_sort[0]
+    #indices_to_condense = [idx.item() for idx in score_sort_idx[:num_to_condense]]
+    indices_to_condense = np.random.randint(low=0, high=score_sort_idx.shape[0], size=num_to_condense)
+
+    if max_greedy_iterations == 0:
+        max_greedy_iterations = b
+    assert b % max_greedy_iterations == 0, "acquisition batch size must be a multiple of (ical_)max_greedy_iterations!"
+    greedy_ack_batch_size = b//max_greedy_iterations
+    print('max_greedy_iterations', max_greedy_iterations, 'greedy_ack_batch_size', greedy_ack_batch_size)
+
+    for ackb_i in range(max_greedy_iterations):
+        bs = 0
+        hsic_scores = []
+        condense_kernels = kernel_matrices[indices_to_condense].permute([1, 2, 0]).mean(dim=-1, keepdim=True).unsqueeze(0) # 1, K, K, 1
+        while bs < B:
+            be = min(B, bs+hsic_compute_batch_size)
+            m = be-bs
+
+            if batch_kernel is None:
+                hsic_scores += [hsic.total_hsic_parallel(
+                    torch.cat([
+                        condense_kernels.repeat([m, 1, 1, 1]),
+                        kernel_matrices[bs:be].unsqueeze(-1),
+                    ],
+                    dim=-1
+                    ).to(device)
+                )]
+            else:
+                hsic_scores += [hsic.total_hsic_parallel(
+                    torch.cat([
+                        condense_kernels.repeat([m, 1, 1, 1]),
+                        torch.cat([
+                            batch_kernel.unsqueeze(0).repeat([m, 1, 1, 1]),
+                            kernel_matrices[bs:be].unsqueeze(-1),
+                        ], dim=-1).mean(dim=-1, keepdim=True),
+                    ],
+                    dim=-1
+                    ).to(device)
+                )]
+            bs = be
+
+        hsic_scores = torch.cat(hsic_scores)
+        hsic_scores[ack_bag] = -math.inf
+
+        _, sorted_idxes = torch.sort(hsic_scores, descending=True)
+        winner_idxes = []
+        for g_ack_i in range(greedy_ack_batch_size):
+            winner_idxes += [sorted_idxes[g_ack_i].item()]
+
+        ack_bag += winner_idxes
+        global_acquisition_bag += [i.item() for i in result.subset_split.get_dataset_indices(winner_idxes)]
+        acquisition_bag_scores += [s.item() for s in hsic_scores[winner_idxes]]
+        print('winner score', result.scores_B[winner_idxes].mean().item(), ', hsic_score', hsic_scores[winner_idxes].mean().item(), ', ackb_i', ackb_i)
+        if batch_kernel is None:
+            batch_kernel = kernel_matrices[winner_idxes].permute([1, 2, 0]) # K, K, L
+        else:
+            batch_kernel = torch.cat([batch_kernel, kernel_matrices[winner_idxes].permute([1, 2, 0])], dim=-1) # K, K, ack_size
+            assert len(batch_kernel.shape) == 3
+            if batch_kernel.shape[-1] >= max_batch_compute_size and max_batch_compute_size != None:
+                idxes = np.random.choice(batch_kernel.shape[-1], size=max_batch_compute_size, replace=False)
+                batch_kernel = batch_kernel[:, :, idxes]
+
+        result.scores_B[winner_idxes] = -math.inf
         score_sort = torch.sort(result.scores_B, descending=True)
         score_sort_idx = score_sort[1]
         score_sort = score_sort[0]
