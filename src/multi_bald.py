@@ -499,13 +499,20 @@ def compute_fass_batch(
             cand_c_idx = cand_X_preds == c
             if cand_c_idx.long().sum() == 0:
                 continue
-            cand_distance[cand_c_idx] = torch.min(
-                    torch.cat(
-                    [
-                        cand_min_dist[cand_c_idx].unsqueeze(-1).repeat([1, sqdist.shape[1]]).unsqueeze(-1), 
-                        sqdist[cand_c_idx].unsqueeze(-1)
-                    ], dim=-1), 
-                dim=-1)[0].mean(1)
+            temp2 = []
+            for bs in range(0, sqdist.shape[1], 3000):
+                be = min(sqdist.shape[1], bs+3000)
+                bl = be-bs
+                temp = torch.cat(
+                        [
+                            cand_min_dist[cand_c_idx].unsqueeze(-1).repeat([1, bl]).unsqueeze(-1), 
+                            sqdist[cand_c_idx, bs:be].unsqueeze(-1)
+                        ], dim=-1)
+                temp2 += [torch.min(temp, dim=-1)[0].detach()]
+                del temp
+                torch.cuda.empty_cache()
+            temp2 = torch.cat(temp2, dim=1).mean(1).detach()
+            cand_distance[cand_c_idx] = temp2
         cand_distance[ack_bag] = max_dist
         winner_index = cand_distance.argmin().item()
         ack_bag += [winner_index]
