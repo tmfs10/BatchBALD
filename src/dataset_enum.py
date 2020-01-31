@@ -86,6 +86,7 @@ class DatasetEnum(enum.Enum):
     mnist_w_noise = "mnist_w_noise"
     cifar= "cifar"
     cifar_unbalanced="cifar_unbalanced"
+    cifar100="cifar100"
     fmnist ='fmnist'
     def get_data_source(self):
         if self == DatasetEnum.mnist:
@@ -147,6 +148,11 @@ class DatasetEnum(enum.Enum):
                 filter_dataset(train_dataset)
                 #filter_dataset(test_dataset)
             return DataSource(train_dataset=train_dataset, test_dataset=test_dataset)
+        elif self==DatasetEnum.cifar100:
+            transform = transforms.Compose([transforms.ToTensor(),transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+            train_dataset = datasets.CIFAR100(root='./data', train=True,download=True, transform=transform)
+            test_dataset = datasets.CIFAR100(root='./data', train=False,download=True, transform=transform)
+            return DataSource(train_dataset=train_dataset, test_dataset=test_dataset)
         elif self==DatasetEnum.fmnist:
             transform=transforms.ToTensor()
             train_dataset = datasets.FashionMNIST(root='./data',train=True,transform= transform,download=True)
@@ -161,6 +167,8 @@ class DatasetEnum(enum.Enum):
             return 10
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return 47
+        elif self==DatasetEnum.cifar100:
+            return 100
         else:
             raise NotImplementedError(f"Unknown dataset {self}!")
 
@@ -170,7 +178,7 @@ class DatasetEnum(enum.Enum):
             return mnist_model.BayesianNet(num_classes=num_classes).to(device)
         elif self in (DatasetEnum.emnist, DatasetEnum.emnist_bymerge):
             return emnist_model.BayesianNet(num_classes=num_classes).to(device)
-        elif self in (DatasetEnum.cifar,DatasetEnum.cifar_unbalanced):
+        elif self in (DatasetEnum.cifar,DatasetEnum.cifar_unbalanced,DatasetEnum.cifar100):
             return cifar_model.BayesianNet(num_classes=num_classes).to(device)
         else:
             raise NotImplementedError(f"Unknown dataset {self}!")

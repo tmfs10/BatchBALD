@@ -500,8 +500,8 @@ def compute_fass_batch(
             if cand_c_idx.long().sum() == 0:
                 continue
             temp2 = []
-            for bs in range(0, sqdist.shape[1], 3000):
-                be = min(sqdist.shape[1], bs+3000)
+            for bs in range(0, sqdist.shape[1], 5000):
+                be = min(sqdist.shape[1], bs+5000)
                 bl = be-bs
                 temp = torch.cat(
                         [
