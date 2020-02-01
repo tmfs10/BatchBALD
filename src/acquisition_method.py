@@ -80,6 +80,7 @@ class AcquisitionMethod(enum.Enum):
                 device=device,
             )
         elif self == self.icalscale:
+            """
             return multi_bald.compute_ical_hsic_batch_scale(
                 bayesian_model=bayesian_model,
                 available_loader=available_loader,
@@ -112,7 +113,6 @@ class AcquisitionMethod(enum.Enum):
                 max_greedy_iterations=ical_max_greedy_iterations,
                 device=device,
             )
-            """
         elif self == self.fass:
             return multi_bald.compute_fass_batch(
                 bayesian_model=bayesian_model,

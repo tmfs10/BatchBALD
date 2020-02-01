@@ -703,6 +703,7 @@ def compute_ical_hsic_batch_scale(
     )
 
     start_time = time.process_time()
+    print('Ack start mem', torch.cuda.memory_allocated())
 
     probs_B_K_C = result.logits_B_K_C.exp_()
     B, K, C = list(result.logits_B_K_C.shape)
@@ -781,6 +782,7 @@ def compute_ical_hsic_batch_scale(
                     ).to(device)
                 )]
             bs = be
+        torch.cuda.empty_cache()
 
         hsic_scores = torch.cat(hsic_scores)
         hsic_scores[ack_bag] = -math.inf
@@ -789,7 +791,7 @@ def compute_ical_hsic_batch_scale(
         ack_bag += [winner_index]
         global_acquisition_bag.append(result.subset_split.get_dataset_indices([winner_index]).item())
         acquisition_bag_scores += [hsic_scores[winner_index].item()]
-        print('winner score', result.scores_B[winner_index].item(), ', hsic_score', hsic_scores[winner_index].item(), ', ackb_i', ackb_i)
+        print('winner score', result.scores_B[winner_index].item(), ', hsic_score', hsic_scores[winner_index].item(), ', ackb_i', ackb_i, ', mem', torch.cuda.memory_allocated())
         if batch_kernel is None:
             batch_kernel = kernel_matrices[winner_index].unsqueeze(-1) # K, K, 1
         else:
@@ -952,9 +954,9 @@ def compute_ical_hsic_batch_scale2(
         else:
             batch_kernel = torch.cat([batch_kernel, kernel_matrices[winner_idxes].permute([1, 2, 0])], dim=-1) # K, K, ack_size
             assert len(batch_kernel.shape) == 3
-            if batch_kernel.shape[-1] >= max_batch_compute_size and max_batch_compute_size != None:
-                idxes = np.random.choice(batch_kernel.shape[-1], size=max_batch_compute_size, replace=False)
-                batch_kernel = batch_kernel[:, :, idxes]
+        if batch_kernel.shape[-1] >= max_batch_compute_size and max_batch_compute_size != None:
+            idxes = np.random.choice(batch_kernel.shape[-1], size=max_batch_compute_size, replace=False)
+            batch_kernel = batch_kernel[:, :, idxes]
 
         result.scores_B[winner_idxes] = -math.inf
         score_sort = torch.sort(result.scores_B, descending=True)
