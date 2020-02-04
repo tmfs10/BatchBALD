@@ -13,6 +13,7 @@ class AcquisitionMethod(enum.Enum):
     multibald = "multibald"
     hsicbald = "hsicbald"
     icalscale = "icalscale"
+    icalavgscale = "icalavgscale"
     fass = "fass"
     acsfw = "acsfw"
 
@@ -98,6 +99,24 @@ class AcquisitionMethod(enum.Enum):
                 device=device,
             )
             """
+            return multi_bald.compute_ical_hsic_batch_scale2(
+                bayesian_model=bayesian_model,
+                available_loader=available_loader,
+                num_classes=num_classes,
+                k=k,
+                b=b,
+                initial_percentage=initial_percentage,
+                reduce_percentage=reduce_percentage,
+                target_size=target_size,
+                max_batch_compute_size=max_batch_compute_size,
+                hsic_compute_batch_size=hsic_compute_batch_size,
+                hsic_kernel_name=hsic_kernel_name,
+                hsic_resample=hsic_resample,
+                max_greedy_iterations=ical_max_greedy_iterations,
+                device=device,
+                store=store,
+            )
+        elif self == self.icalavgscale:
             return multi_bald.compute_ical_hsic_batch_scale3(
                 bayesian_model=bayesian_model,
                 available_loader=available_loader,
