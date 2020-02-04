@@ -28,13 +28,14 @@ class AcquisitionMethod(enum.Enum):
         min_remaining_percentage,
         initial_percentage,
         reduce_percentage,
-        max_batch_compute_size=None,
+        max_batch_compute_size=0,
         hsic_compute_batch_size=None,
         hsic_kernel_name=None,
         hsic_resample=True,
         fass_entropy_bag_size_factor=2.0,
         ical_max_greedy_iterations=0,
         device=None,
+        store=None,
     ) -> AcquisitionBatch:
         target_size = max(
             min_candidates_per_acquired_item * b, len(available_loader.dataset) * min_remaining_percentage // 100
@@ -97,7 +98,7 @@ class AcquisitionMethod(enum.Enum):
                 device=device,
             )
             """
-            return multi_bald.compute_ical_hsic_batch_scale2(
+            return multi_bald.compute_ical_hsic_batch_scale3(
                 bayesian_model=bayesian_model,
                 available_loader=available_loader,
                 num_classes=num_classes,
@@ -112,6 +113,7 @@ class AcquisitionMethod(enum.Enum):
                 hsic_resample=hsic_resample,
                 max_greedy_iterations=ical_max_greedy_iterations,
                 device=device,
+                store=store,
             )
         elif self == self.fass:
             return multi_bald.compute_fass_batch(

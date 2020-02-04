@@ -13,7 +13,7 @@ from torch_utils import get_base_indices
 import torch.utils.data as data
 import numpy as np
 import random
-from acquisition_functions import AcquisitionFunction
+from acquisition_functions import AcquisitionFunction, compute_pair_mi, generate_sample
 from reduced_consistent_mc_sampler import reduced_eval_consistent_bayesian_model
 from blackhc import laaos
 
@@ -73,6 +73,12 @@ def create_experiment_config_argparser(parser):
         help="sample that needs to be part of the initial samples (instead of sampling initial_samples_per_class)",
         default=None,#[38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 34379, 24287, 9849, 29305, 39508, 39356, 8758, 42579, 13655, 7636, 21562, 41329]
         #default=[38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 54379, 24287, 9849, 59305, 39508, 39356, 8758, 52579, 13655, 7636, 21562, 41329],
+    )
+    parser.add_argument(
+        "--file_with_initial_samples",
+        dest="file_with_initial_samples",
+        type=str,
+        default="",
     )
     parser.add_argument(
         "--type",
@@ -256,6 +262,13 @@ def main():
     balanced_test_set = args.balanced_test_set
     balanced_validation_set = args.balanced_validation_set
 
+    if args.file_with_initial_samples != "":
+        if args.initial_samples is None:
+            args.initial_samples = []
+        with open(args.file_with_initial_samples) as f:
+            for line in f:
+                args.initial_samples.append(int(line.strip()))
+
     experiment_data = get_experiment_data(
         data_source=dataset.get_data_source(),
         num_classes=dataset.num_classes,
@@ -330,6 +343,7 @@ def main():
         )
         print("entropy score shape:",result.scores_B.numpy().shape)
         entropy_score = result.scores_B.numpy().mean()
+        to_store = {}
         with ContextStopwatch() as batch_acquisition_stopwatch:
             ret = acquisition_method.acquire_batch(
                 bayesian_model=model,
@@ -349,11 +363,30 @@ def main():
                 hsic_resample=args.hsic_resample,
                 ical_max_greedy_iterations=args.ical_max_greedy_iterations,
                 device=device,
+                store=to_store,
             )
             if type(ret) is tuple:
                 batch, time_taken = ret
             else:
                 batch = ret
+
+        probs_B_K_C = result.logits_B_K_C.exp()
+        B, K, C = list(probs_B_K_C.shape) # (pool size, num samples, num classes)
+        probs_B_C = probs_B_K_C.mean(dim=1)
+        prior_entropy = -(probs_B_C * probs_B_C.log()).sum(dim=-1) # (batch_size,)
+        mi = 0.
+        post_entropy = 0.
+        sample_B_K_C = generate_sample(probs_B_K_C)
+        unacquired = list(set(range(B)).difference(batch.indices))
+        random.shuffle(unacquired)
+        for i, idx in enumerate(batch.indices):
+            cur_post_entropy = compute_pair_mi(idx, i, probs_B_K_C, probs_B_C, sample_B_K_C)
+            mi += (prior_entropy[i]-cur_post_entropy)/len(batch.indices)
+            post_entropy += cur_post_entropy/len(batch.indices)
+        mi = mi.item()
+        post_entropy = post_entropy.item()
+        print('post_entropy', post_entropy, 'mi', mi)
+
 
         original_batch_indices = get_base_indices(experiment_data.available_dataset, batch.indices)
         print(f"Acquiring indices {original_batch_indices}")
@@ -372,6 +405,9 @@ def main():
                 chosen_samples_orignal_score=batch.orignal_scores,
                 train_model_elapsed_time=train_model_stopwatch.elapsed_time,
                 batch_acquisition_elapsed_time=batch_acquisition_stopwatch.elapsed_time,
+                prior_pool_entropy=prior_entropy.mean().item(),
+                batch_pool_mi=mi,
+                **to_store,
             )
         )
 

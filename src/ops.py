@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import copy
+import inspect
 
 _eps = 1.0e-5
 
@@ -295,3 +296,47 @@ def sqdist(X1, X2=None, do_mean=False, collect=True):
                 return ((X2.unsqueeze(0) - X1.unsqueeze(1)) ** 2).sum(-1)
 
 
+def get_debug_loc(level=1):
+    pf = inspect.currentframe()
+    for _ in range(level):
+        pf = pf.f_back
+    (filename, line_number, function_name, lines, index) = inspect.getframeinfo(pf)
+    filename = filename.split('/')[-1]
+    return filename, line_number
+
+def debug_print(*args, **kwargs):
+    filename, line_number = get_debug_loc(2)
+    print("(%s, %d) >> " % (filename, line_number), *args, **kwargs)
+
+def shape_assert(s, t, prefix=""):
+    if isinstance(s, torch.Tensor):
+        s = s.shape
+    filename, line_number = get_debug_loc(2)
+    error_str = "(%s, %d) >> %s: %s == %s" % (filename, line_number, prefix, s, t)
+    assert len(s) == len(t), error_str
+    
+    for i in range(len(s)):
+        if t[i] == -1:
+            continue
+        assert s[i] == t[i], "(%s, %d) >> %s: %s[%d] == %s[%d]" % (filename, line_number, prefix, s, i, t, i)
+
+def index_tensor_by_vector(t, v, keepdim=True):
+    nr, nc = t.shape[:2]
+    rest_shape = list(t.shape[2:])
+    assert v.shape[0] == nr
+    assert v.max() <= nc
+    mask = torch.eye(nc, device=v.device)[v].bool().view(-1)
+    ret = t.view([-1]+rest_shape)[mask]
+    shape_assert(ret.shape, [nr]+rest_shape)
+    if keepdim:
+        return ret.unsqueeze(1)
+    else:
+        return ret
+
+def scatter_tensor_by_vector(t, v, s):
+    nr, nc = t.shape[:2]
+    rest_shape = list(t.shape[2:])
+    assert v.shape[0] == nr
+    assert v.max() <= nc
+    mask = torch.eye(nc, device=v.device)[v].bool().view(-1)
+    t.view([-1]+rest_shape)[mask] = s
