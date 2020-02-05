@@ -1272,9 +1272,9 @@ def compute_ical_joint_hsic_batch_scale(
                 )]
             else:
                 temp_hsic_scores = []
-                batch_shuffle_idxes = torch.randperm(batch_kernel.shape[-1])
-                for bs2 in range(0, batch_kernel.shape[-1], max_batch_compute_size):
-                    be2 = min(batch_kernel.shape[-1], bs2+max_batch_compute_size)
+                batch_shuffle_idxes = torch.randperm(len(ack_bag))
+                for bs2 in range(0, len(ack_bag), max_batch_compute_size):
+                    be2 = min(len(ack_bag), bs2+max_batch_compute_size)
                     batch_cur_idxes = [ack_bag[i.item()] for i in batch_shuffle_idxes[bs2:be2]]
                     batch_cur_kernel_matrix = hsic.sqdist_parallel(
                             torch.cat([
