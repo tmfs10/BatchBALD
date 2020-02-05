@@ -184,6 +184,25 @@ class AcquisitionMethod(enum.Enum):
             )
             """
         elif self == self.icaljoint2:
+            return multi_bald.compute_ical_hsic_batch_scale5(
+                bayesian_model=bayesian_model,
+                available_loader=available_loader,
+                num_classes=num_classes,
+                k=k,
+                b=b,
+                initial_percentage=initial_percentage,
+                reduce_percentage=reduce_percentage,
+                target_size=target_size,
+                max_batch_compute_size=max_batch_compute_size,
+                hsic_compute_batch_size=hsic_compute_batch_size,
+                hsic_kernel_name=hsic_kernel_name,
+                hsic_resample=hsic_resample,
+                max_greedy_iterations=ical_max_greedy_iterations,
+                device=device,
+                store=store,
+                num_to_condense=num_to_condense,
+            )
+            """
             return multi_bald.compute_ical_joint_hsic_batch_scale(
                 bayesian_model=bayesian_model,
                 available_loader=available_loader,
@@ -204,6 +223,7 @@ class AcquisitionMethod(enum.Enum):
                 num_to_condense=num_to_condense,
                 use_condense_only=True,
             )
+            """
         elif self == self.fass:
             return multi_bald.compute_fass_batch(
                 bayesian_model=bayesian_model,
