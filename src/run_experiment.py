@@ -189,6 +189,12 @@ def create_experiment_config_argparser(parser):
         default=10,
     )
 
+    parser.add_argument(
+        "--random_ical_minibatch",
+        action="store_true",
+        default=False,
+    )
+
     return parser
 
 
@@ -382,6 +388,7 @@ def main():
                 ical_max_greedy_iterations=args.ical_max_greedy_iterations,
                 device=device,
                 store=to_store,
+                random_ical_minibatch=args.random_ical_minibatch,
             )
             if type(ret) is tuple:
                 batch, time_taken = ret

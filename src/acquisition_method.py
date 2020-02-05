@@ -38,6 +38,7 @@ class AcquisitionMethod(enum.Enum):
         ical_max_greedy_iterations=0,
         device=None,
         store=None,
+        random_ical_minibatch=False,
     ) -> AcquisitionBatch:
         target_size = max(
             min_candidates_per_acquired_item * b, len(available_loader.dataset) * min_remaining_percentage // 100
@@ -152,6 +153,7 @@ class AcquisitionMethod(enum.Enum):
                 max_greedy_iterations=ical_max_greedy_iterations,
                 device=device,
                 store=store,
+                random_ical_minibatch=random_ical_minibatch,
             )
         elif self == self.fass:
             return multi_bald.compute_fass_batch(
