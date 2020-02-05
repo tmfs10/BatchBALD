@@ -13,7 +13,7 @@ from torch_utils import get_base_indices
 import torch.utils.data as data
 import numpy as np
 import random
-from acquisition_functions import AcquisitionFunction, compute_pair_mi, generate_sample
+from acquisition_functions import AcquisitionFunction, compute_pair_mi, generate_sample, compute_mi_sample
 from reduced_consistent_mc_sampler import reduced_eval_consistent_bayesian_model
 from blackhc import laaos
 
@@ -391,6 +391,9 @@ def main():
         post_entropy = post_entropy.item()
         print('post_entropy', post_entropy, 'mi', mi)
 
+        prior_entropy, mi = compute_mi_sample(probs_B_K_C, sample_B_K_C)
+        print('prior_entropy', prior_entropy, 'unpooled interdependency', mi)
+
 
         original_batch_indices = get_base_indices(experiment_data.available_dataset, batch.indices)
         print(f"Acquiring indices {original_batch_indices}")
@@ -409,7 +412,7 @@ def main():
                 chosen_samples_orignal_score=batch.orignal_scores,
                 train_model_elapsed_time=train_model_stopwatch.elapsed_time,
                 batch_acquisition_elapsed_time=batch_acquisition_stopwatch.elapsed_time,
-                prior_pool_entropy=prior_entropy.mean().item(),
+                prior_pool_entropy=prior_entropy,
                 batch_pool_mi=mi,
                 **to_store,
             )
@@ -426,6 +429,42 @@ def main():
         if test_metrics["accuracy"] >= args.target_accuracy:
             print(f'accuracy {test_metrics["accuracy"]} >= {args.target_accuracy}')
             break
+
+    with ContextStopwatch() as train_model_stopwatch:
+        early_stopping_patience = args.early_stopping_patience
+        num_inference_samples = args.num_inference_samples
+        log_interval = args.log_interval
+
+        model, num_epochs, test_metrics = dataset.train_model(
+            train_loader,
+            test_loader,
+            validation_loader,
+            num_inference_samples,
+            max_epochs,
+            early_stopping_patience,
+            desc,
+            log_interval,
+            device,
+        )
+    target_size = max(args.min_candidates_per_acquired_item * args.available_sample_k, len(available_loader.dataset) * args.min_remaining_percentage // 100)
+    result = reduced_eval_consistent_bayesian_model(
+        bayesian_model=model,
+        acquisition_function=AcquisitionFunction.predictive_entropy,
+        num_classes=dataset.num_classes,
+        k=args.num_inference_samples,
+        initial_percentage=args.initial_percentage,
+        reduce_percentage=args.reduce_percentage,
+        target_size=target_size,
+        available_loader=available_loader,
+        device=device,
+    )
+
+    probs_B_K_C = result.logits_B_K_C.exp()
+    B, K, C = list(probs_B_K_C.shape) # (pool size, num samples, num classes)
+    probs_B_C = probs_B_K_C.mean(dim=1)
+    prior_entropy = -(probs_B_C * probs_B_C.log()).sum(dim=-1) # (batch_size,)
+
+    print('post_entropy', prior_entropy.mean().item(), 'mi', mi)
 
     print("DONE")
 

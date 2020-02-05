@@ -1286,10 +1286,8 @@ def compute_ical_joint_hsic_batch_scale(
                     temp_hsic_scores += [hsic.total_hsic_parallel(
                         torch.cat([
                             condense_kernels.repeat([m, 1, 1, 1]),
-                            torch.cat([
-                                batch_kernel[:, :, batch_shuffle_idxes[bs2:be2]].unsqueeze(0).repeat([m, 1, 1, 1]),
-                                kernel_matrices[bs:be].unsqueeze(-1),
-                            ], dim=-1), keepdim=True),
+                            batch_kernel[:, :, batch_shuffle_idxes[bs2:be2]].unsqueeze(0).repeat([m, 1, 1, 1]),
+                            kernel_matrices[bs:be].unsqueeze(-1),
                         ],
                         dim=-1
                         ).to(device)
