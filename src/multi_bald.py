@@ -1232,6 +1232,7 @@ def compute_ical_joint_hsic_batch_scale(
     dist_matrices = torch.cat(dist_matrices, dim=-1)#.to(device)
     print('Computed dist_matrices')
 
+    kernel_matrices = torch.zeros_like(dist_matrices)
     bs = 0
     while bs < B:
         be = min(B, bs+hsic_compute_batch_size)
@@ -1283,11 +1284,19 @@ def compute_ical_joint_hsic_batch_scale(
                 batch_shuffle_idxes = torch.randperm(batch_kernel.shape[-1])
                 for bs2 in range(0, batch_kernel.shape[-1], max_batch_compute_size):
                     be2 = min(batch_kernel.shape[-1], bs2+max_batch_compute_size)
+                    batch_cur_idxes = [ack_bag[i.item()] for i in batch_shuffle_idxes[bs2:be2]]
+                    batch_cur_kernel_matrix = hsic.sqdist_parallel(
+                            torch.cat([
+                                sample_B_K_C[batch_cur_idxes].permute([1, 0, 2]).reshape(K, -1).unsqueeze(0).repeat([m, 1, 1]), # M, K, batch_size*C
+                                sample_B_K_C[bs:be], # M, K, C
+                                ], dim=-1)
+                        )  # M, K, K
+                    assert list(batch_cur_kernel_matrix.shape) == [m, K, K]
+                    batch_cur_kernel_matrix = kernel_fn(batch_cur_kernel_matrix.permute([1, 2, 0])).permute([2, 0, 1]).to(device) # M, K, K
                     temp_hsic_scores += [hsic.total_hsic_parallel(
                         torch.cat([
                             condense_kernels.repeat([m, 1, 1, 1]),
-                            batch_kernel[:, :, batch_shuffle_idxes[bs2:be2]].unsqueeze(0).repeat([m, 1, 1, 1]),
-                            kernel_matrices[bs:be].unsqueeze(-1),
+                            batch_cur_kernel_matrix.unsqueeze(-1),
                         ],
                         dim=-1
                         ).to(device)

@@ -183,6 +183,12 @@ def create_experiment_config_argparser(parser):
         default=30,
     )
 
+    parser.add_argument(
+        "--max_num_batch_init_samples_to_read",
+        type=int,
+        default=10,
+    )
+
     return parser
 
 
@@ -265,13 +271,21 @@ def main():
     if args.file_with_initial_samples != "":
         if args.initial_samples is None:
             args.initial_samples = []
+        num_read = 0
         with open(args.file_with_initial_samples) as f:
             for line in f:
+                cur_samples = []
                 if line.startswith("store['initial_samples']"):
                     cur_samples = [int(k) for k in line.strip().split('=')[1][1:-1].split(',')]
-                elif line.startswith("store['iterations']"):
-                    cur_samples = [int(k) for k in line.strip().split("'chosen_targets': [")[1].split("]")[0].split(',')]
+                    num_read += 1
+                elif "chosen_targets" in line:
+                    line = line.strip().split("'chosen_targets': [")[1]
+                    line = line.split("]")[0]
+                    cur_samples = [int(k) for k in line.split(',')]
+                    num_read += 1
                 args.initial_samples += cur_samples
+                if num_read >= args.max_num_batch_init_samples_to_read:
+                    break
 
     experiment_data = get_experiment_data(
         data_source=dataset.get_data_source(),
