@@ -1178,6 +1178,7 @@ def compute_ical_joint_hsic_batch_scale(
     store=None,
     random_ical_minibatch=False,
     num_to_condense=200,
+    use_condense_only=False,
 ) -> AcquisitionBatch:
     assert hsic_compute_batch_size is not None
     assert hsic_kernel_name is not None
@@ -1211,13 +1212,6 @@ def compute_ical_joint_hsic_batch_scale(
     oh_sample = oh_sample.view(B, K, C)
     sample_B_K_C = oh_sample#.to(device)
 
-    #prior_entropy, mi = compute_mi_sample(probs_B_K_C, sample_B_K_C)
-    #print('prior_entropy', prior_entropy, 'mi', mi)
-
-    #if store is not None:
-    #    store['prior_entropy'] = prior_entropy
-    #    store['mi'] = mi
-
     kernel_fn = getattr(hsic, hsic_kernel_name+'_kernels')
 
     dist_matrices = []
@@ -1246,13 +1240,8 @@ def compute_ical_joint_hsic_batch_scale(
     batch_kernel = None
     print('Computing HSIC for', B, 'points')
 
-    num_to_condense = 200
-
-    score_sort = torch.sort(result.scores_B, descending=True)
-    score_sort_idx = score_sort[1]
-    score_sort = score_sort[0]
-    #indices_to_condense = [idx.item() for idx in score_sort_idx[:num_to_condense]]
-    indices_to_condense = np.random.randint(low=0, high=score_sort_idx.shape[0], size=num_to_condense)
+    assert num_to_condense > 0
+    indices_to_condense = np.random.randint(low=0, high=result.scores_B.shape[0], size=num_to_condense)
 
     if max_greedy_iterations == 0:
         max_greedy_iterations = b
@@ -1260,19 +1249,23 @@ def compute_ical_joint_hsic_batch_scale(
     greedy_ack_batch_size = b//max_greedy_iterations
     print('max_greedy_iterations', max_greedy_iterations, 'greedy_ack_batch_size', greedy_ack_batch_size)
 
+    # kernel_matrices are B, K, K
     for ackb_i in range(max_greedy_iterations):
-        bs = 0
         hsic_scores = []
         condense_kernels = kernel_matrices[indices_to_condense].permute([1, 2, 0]).mean(dim=-1, keepdim=True).unsqueeze(0) # 1, K, K, 1
-        while bs < B:
-            be = min(B, bs+hsic_compute_batch_size)
+        all_compute_indices = np.arange(B)
+        if use_condense_only:
+            all_compute_indices = indices_to_condense
+        for bs in range(0, all_compute_indices.shape[0], hsic_compute_batch_size):
+            be = min(all_compute_indices.shape[0], bs+hsic_compute_batch_size)
             m = be-bs
+            compute_indices = all_compute_indices[bs:be]
 
             if batch_kernel is None:
                 hsic_scores += [hsic.total_hsic_parallel(
                     torch.cat([
                         condense_kernels.repeat([m, 1, 1, 1]),
-                        kernel_matrices[bs:be].unsqueeze(-1),
+                        kernel_matrices[compute_indices].unsqueeze(-1),
                     ],
                     dim=-1
                     ).to(device)
@@ -1286,11 +1279,13 @@ def compute_ical_joint_hsic_batch_scale(
                     batch_cur_kernel_matrix = hsic.sqdist_parallel(
                             torch.cat([
                                 sample_B_K_C[batch_cur_idxes].permute([1, 0, 2]).reshape(K, -1).unsqueeze(0).repeat([m, 1, 1]), # M, K, batch_size*C
-                                sample_B_K_C[bs:be], # M, K, C
+                                sample_B_K_C[compute_indices], # M, K, C
                                 ], dim=-1)
                         )  # M, K, K
                     assert list(batch_cur_kernel_matrix.shape) == [m, K, K]
                     batch_cur_kernel_matrix = kernel_fn(batch_cur_kernel_matrix.permute([1, 2, 0])).permute([2, 0, 1]).to(device) # M, K, K
+                    assert not torch.any(torch.isnan(batch_cur_kernel_matrix))
+                    assert not torch.any(torch.isinf(batch_cur_kernel_matrix))
                     assert list(batch_cur_kernel_matrix.shape) == [m, K, K]
                     temp_hsic_scores += [hsic.total_hsic_parallel(
                         torch.cat([
@@ -1300,39 +1295,39 @@ def compute_ical_joint_hsic_batch_scale(
                         dim=-1
                         ).to(device)
                     )]
+                    assert not torch.any(torch.isnan(temp_hsic_scores[-1]))
+                    assert not torch.any(torch.isinf(temp_hsic_scores[-1]))
                     if random_ical_minibatch:
                         break
                 hsic_scores += [torch.stack(temp_hsic_scores, dim=0).mean(0)]
-            bs = be
 
         hsic_scores = torch.cat(hsic_scores)
-        hsic_scores[ack_bag] = -math.inf
+        assert not torch.any(torch.isnan(hsic_scores))
+        assert not torch.any(torch.isinf(hsic_scores))
 
         _, sorted_idxes = torch.sort(hsic_scores, descending=True)
+        og_winner_idxes = []
         winner_idxes = []
         for g_ack_i in range(greedy_ack_batch_size):
-            winner_idxes += [sorted_idxes[g_ack_i].item()]
+            og_idx = sorted_idxes[g_ack_i].item()
+            idx = all_compute_indices[og_idx]
+            if idx in ack_bag:
+                continue
+            og_winner_idxes += [og_idx]
+            winner_idxes += [idx]
 
         ack_bag += winner_idxes
         global_acquisition_bag += [i.item() for i in result.subset_split.get_dataset_indices(winner_idxes)]
-        acquisition_bag_scores += [s.item() for s in hsic_scores[winner_idxes]]
-        print('winner score', result.scores_B[winner_idxes].mean().item(), ', hsic_score', hsic_scores[winner_idxes].mean().item(), ', ackb_i', ackb_i)
+        acquisition_bag_scores += [s.item() for s in hsic_scores[og_winner_idxes]]
+        print('winner score', result.scores_B[winner_idxes].mean().item(), ', hsic_score', hsic_scores[og_winner_idxes].mean().item(), ', ackb_i', ackb_i)
         if batch_kernel is None:
             batch_kernel = kernel_matrices[winner_idxes].permute([1, 2, 0]) # K, K, L
         else:
             batch_kernel = torch.cat([batch_kernel, kernel_matrices[winner_idxes].permute([1, 2, 0])], dim=-1) # K, K, ack_size
             assert len(batch_kernel.shape) == 3
-        #if batch_kernel.shape[-1] >= max_batch_compute_size and max_batch_compute_size != 0:
-        #    idxes = np.random.choice(batch_kernel.shape[-1], size=max_batch_compute_size, replace=False)
-        #    batch_kernel = batch_kernel[:, :, idxes]
 
-        result.scores_B[winner_idxes] = -math.inf
-        score_sort = torch.sort(result.scores_B, descending=True)
-        score_sort_idx = score_sort[1]
-        score_sort = score_sort[0]
-        #indices_to_condense = [idx.item() for idx in score_sort_idx[:num_to_condense]]
         if hsic_resample:
-            indices_to_condense = np.random.randint(low=0, high=score_sort_idx.shape[0], size=num_to_condense)
+            indices_to_condense = np.random.randint(low=0, high=result.scores_B.shape[0], size=num_to_condense)
 
     assert len(ack_bag) == b
     np.set_printoptions(precision=3, suppress=True)

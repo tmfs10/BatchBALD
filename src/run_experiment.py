@@ -201,6 +201,12 @@ def create_experiment_config_argparser(parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--use_condense_only",
+        action="store_true",
+        default=False,
+    )
+
     return parser
 
 
@@ -396,6 +402,7 @@ def main():
                 store=to_store,
                 random_ical_minibatch=args.random_ical_minibatch,
                 num_to_condense=args.num_to_condense,
+                use_condense_only=args.use_condense_only,
             )
             if type(ret) is tuple:
                 batch, time_taken = ret
