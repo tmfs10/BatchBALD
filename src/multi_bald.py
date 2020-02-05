@@ -1308,9 +1308,12 @@ def compute_ical_joint_hsic_batch_scale(
         _, sorted_idxes = torch.sort(hsic_scores, descending=True)
         og_winner_idxes = []
         winner_idxes = []
-        for g_ack_i in range(greedy_ack_batch_size):
+        g_ack_i = 0
+        while len(winner_idxes) < greedy_ack_batch_size:
+            assert g_ack_i < sorted_idxes.shape[0]
             og_idx = sorted_idxes[g_ack_i].item()
             idx = all_compute_indices[og_idx]
+            g_ack_i += 1
             if idx in ack_bag or torch.isnan(hsic_scores[og_idx]):
                 continue
             og_winner_idxes += [og_idx]
