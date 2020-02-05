@@ -39,6 +39,7 @@ class AcquisitionMethod(enum.Enum):
         device=None,
         store=None,
         random_ical_minibatch=False,
+        num_to_condense=200,
     ) -> AcquisitionBatch:
         target_size = max(
             min_candidates_per_acquired_item * b, len(available_loader.dataset) * min_remaining_percentage // 100
@@ -82,6 +83,7 @@ class AcquisitionMethod(enum.Enum):
                 hsic_kernel_name=hsic_kernel_name,
                 hsic_resample=hsic_resample,
                 device=device,
+                num_to_condense=num_to_condense,
             )
         elif self == self.icalscale:
             """
@@ -117,6 +119,7 @@ class AcquisitionMethod(enum.Enum):
                 max_greedy_iterations=ical_max_greedy_iterations,
                 device=device,
                 store=store,
+                num_to_condense=num_to_condense,
             )
         elif self == self.icalavgscale:
             return multi_bald.compute_ical_hsic_batch_scale3(
@@ -135,6 +138,7 @@ class AcquisitionMethod(enum.Enum):
                 max_greedy_iterations=ical_max_greedy_iterations,
                 device=device,
                 store=store,
+                num_to_condense=num_to_condense,
             )
         elif self == self.icaljoint:
             return multi_bald.compute_ical_joint_hsic_batch_scale(
@@ -154,6 +158,7 @@ class AcquisitionMethod(enum.Enum):
                 device=device,
                 store=store,
                 random_ical_minibatch=random_ical_minibatch,
+                num_to_condense=num_to_condense,
             )
         elif self == self.fass:
             return multi_bald.compute_fass_batch(

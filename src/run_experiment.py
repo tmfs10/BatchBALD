@@ -190,6 +190,12 @@ def create_experiment_config_argparser(parser):
     )
 
     parser.add_argument(
+        "--num_to_condense",
+        type=int,
+        default=200,
+    )
+
+    parser.add_argument(
         "--random_ical_minibatch",
         action="store_true",
         default=False,
@@ -389,6 +395,7 @@ def main():
                 device=device,
                 store=to_store,
                 random_ical_minibatch=args.random_ical_minibatch,
+                num_to_condense=args.num_to_condense,
             )
             if type(ret) is tuple:
                 batch, time_taken = ret
