@@ -10,7 +10,7 @@ def sqdist_parallel(X1):
     X is of shape (m, n, d, k)
     return is of shape (m, n, n, d)
     """
-    return ((X1.unsqueeze(1) - X1.unsqueeze(2)) ** 2).mean(-1)
+    return ((X1.unsqueeze(1) - X1.unsqueeze(2)) ** 2).sum(-1)
 
 
 def sqdist(X1, X2=None, do_mean=False, collect=True):
