@@ -267,7 +267,11 @@ def main():
             args.initial_samples = []
         with open(args.file_with_initial_samples) as f:
             for line in f:
-                args.initial_samples.append(int(line.strip()))
+                if line.startswith("store['initial_samples']"):
+                    cur_samples = [int(k) for k in line.strip().split('=')[1][1:-1].split(',')]
+                elif line.startswith("store['iterations']"):
+                    cur_samples = [int(k) for k in line.strip().split("'chosen_targets': [")[1].split("]")[0].split(',')]
+                args.initial_samples += cur_samples
 
     experiment_data = get_experiment_data(
         data_source=dataset.get_data_source(),
