@@ -993,6 +993,7 @@ def compute_ical_hsic_batch_scale4(
     device=None,
     store=None,
     num_to_condense=200,
+    num_inference_for_marginal_stat=0,
 ) -> AcquisitionBatch:
     assert hsic_compute_batch_size is not None
     assert hsic_kernel_name is not None
@@ -1085,36 +1086,66 @@ def compute_ical_hsic_batch_scale4(
                 )]
             else:
                 num_ack = len(ack_bag)
-                cur_og_batch_kernel = batch_kernel[None, :, :, None].repeat([m, 1, 1, 1]) # M, K, K, 1
-                cur_batch_kernel = (cur_og_batch_kernel*num_ack + kernel_matrices[bs:be].unsqueeze(-1))/(num_ack+1) # M, K, K, 1
-                cur_div_condense_kernels = div_condense_kernels.repeat([1, m, 1, 1]).view(-1, K, K, 1) # max_batch_compute_size*M, K, K, 1
+                if num_inference_for_marginal_stat > 0:
+                    marginal_stat_K_idx = torch.randperm(K)[:num_inference_for_marginal_stat]
+                else:
+                    marginal_stat_K_idx = torch.arange(K)
+                K2 = marginal_stat_K_idx.shape[0]
+
+                if K2 < K:
+                    cur_og_batch_kernel = batch_kernel[marginal_stat_K_idx][:, marginal_stat_K_idx][None, :, :, None].repeat([m, 1, 1, 1]) # M, K2, K2, 1
+                    cur_batch_kernel = (cur_og_batch_kernel*num_ack + kernel_matrices[bs:be][:, marginal_stat_K_idx][:, :, marginal_stat_K_idx].unsqueeze(-1))/(num_ack+1) # M, K2, K2, 1
+                    cur_div_condense_kernels = div_condense_kernels[:, :, marginal_stat_K_idx][:, :, :, marginal_stat_K_idx].repeat([1, m, 1, 1]).view(-1, K2, K2, 1) # max_batch_compute_size*M, K, K, 1
+                else:
+                    cur_og_batch_kernel = batch_kernel[None, :, :, None].repeat([m, 1, 1, 1]) # M, K2, K2, 1
+                    cur_batch_kernel = (cur_og_batch_kernel*num_ack + kernel_matrices[bs:be].unsqueeze(-1))/(num_ack+1) # M, K2, K2, 1
+                    cur_div_condense_kernels = div_condense_kernels.repeat([1, m, 1, 1]).view(-1, K2, K2, 1) # max_batch_compute_size*M, K, K, 1
+                assert list(cur_batch_kernel.shape) == [m, K2, K2, 1], cur_batch_kernel.shape
+                assert list(cur_div_condense_kernels.shape) == [m*max_batch_compute_size, K2, K2, 1], cur_div_condense_kernels.shape
                 hsic_scores1 = hsic.total_hsic_parallel(
                     torch.cat([
                         cur_div_condense_kernels,
-                        cur_batch_kernel.unsqueeze(0).repeat([max_batch_compute_size, 1, 1, 1, 1]).view(-1, K, K, 1), # max_batch_compute_size, M, K, K, 1
-                    ], # max_batch_compute_size*M, K, K, 2
+                        cur_batch_kernel.unsqueeze(0).repeat([max_batch_compute_size, 1, 1, 1, 1]).view(-1, K2, K2, 1), # max_batch_compute_size*M, K2, K2, 1
+                    ], # max_batch_compute_size*M, K2, K2, 2
                     dim=-1
                     ).to(device)
                 )
                 hsic_scores2 = hsic.total_hsic_parallel(
                     torch.cat([
                         cur_div_condense_kernels,
-                        cur_og_batch_kernel.unsqueeze(0).repeat([max_batch_compute_size, 1, 1, 1, 1]).view(-1, K, K, 1),
+                        cur_og_batch_kernel.unsqueeze(0).repeat([max_batch_compute_size, 1, 1, 1, 1]).view(-1, K2, K2, 1),
                     ],
                     dim=-1
                     ).to(device)
                 )
-                temp_hsic_scores = (hsic_scores1/hsic_scores2).view(max_batch_compute_size, m).mean(0) # marginal fractional improvement in dependency
-                hsic_scores1 = hsic.total_hsic_parallel(
-                    torch.cat([
-                        condense_kernels.repeat([m, 1, 1, 1]), # M, K, K, 1
-                        cur_batch_kernel,
-                    ],
-                    dim=-1
-                    ).to(device)
-                )
-                hsic_scores1 *= (temp_hsic_scores-1)
+                to_add = max(hsic_scores1.min().item(), hsic_scores2.min().item())
+                hsic_scores1 += to_add + 1e-5
+                hsic_scores2 += to_add + 1e-5
+                marginal_improvement_ratio = (hsic_scores1/hsic_scores2).view(max_batch_compute_size, m).mean(0) # marginal fractional improvement in dependency
+
+                if K2 == K:
+                    hsic_scores1 = hsic.total_hsic_parallel(
+                        torch.cat([
+                            condense_kernels.repeat([m, 1, 1, 1]), # M, K, K, 1
+                            cur_batch_kernel,
+                        ],
+                        dim=-1
+                        ).to(device)
+                    )
+                else:
+                    cur_og_batch_kernel = batch_kernel[None, :, :, None].repeat([m, 1, 1, 1]) # M, K, K, 1
+                    cur_batch_kernel = (cur_og_batch_kernel*num_ack + kernel_matrices[bs:be].unsqueeze(-1))/(num_ack+1) # M, K, K, 1
+                    hsic_scores1 = hsic.total_hsic_parallel(
+                        torch.cat([
+                            condense_kernels.repeat([m, 1, 1, 1]), # M, K, K, 1
+                            cur_batch_kernel, # M, K, K, 1
+                        ],
+                        dim=-1
+                        ).to(device)
+                    )
+                hsic_scores1 *= (marginal_improvement_ratio-1)
                 hsic_scores += [hsic_scores1]
+                torch.cuda.empty_cache()
             bs = be
 
         hsic_scores = torch.cat(hsic_scores)

@@ -196,13 +196,13 @@ def create_experiment_config_argparser(parser):
     )
 
     parser.add_argument(
-        "--random_ical_minibatch",
-        action="store_true",
-        default=False,
+        "--num_inference_for_marginal_stat",
+        type=int,
+        default=0,
     )
 
     parser.add_argument(
-        "--use_condense_only",
+        "--random_ical_minibatch",
         action="store_true",
         default=False,
     )
@@ -402,7 +402,7 @@ def main():
                 store=to_store,
                 random_ical_minibatch=args.random_ical_minibatch,
                 num_to_condense=args.num_to_condense,
-                use_condense_only=args.use_condense_only,
+                num_inference_for_marginal_stat=args.num_inference_for_marginal_stat,
             )
             if type(ret) is tuple:
                 batch, time_taken = ret
