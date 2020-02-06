@@ -1119,8 +1119,8 @@ def compute_ical_hsic_batch_scale4(
                     ).to(device)
                 )
                 to_add = max(hsic_scores1.min().item(), hsic_scores2.min().item())
-                hsic_scores1 += to_add + 1e-5
-                hsic_scores2 += to_add + 1e-5
+                hsic_scores1 += to_add + 1e-7
+                hsic_scores2 += to_add + 1e-7
                 marginal_improvement_ratio = (hsic_scores1/hsic_scores2).view(max_batch_compute_size, m).mean(0) # marginal fractional improvement in dependency
 
                 if K2 == K:
