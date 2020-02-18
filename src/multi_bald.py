@@ -592,7 +592,9 @@ def compute_ical_pointwise(
                     to_add = max(hsic_scores1.min().item(), hsic_scores2.min().item())
                     hsic_scores1 += to_add + 1e-8
                     hsic_scores2 += to_add + 1e-8
-                    marginal_improvement_ratio = (hsic_scores1/hsic_scores2).view(div_size, m).mean(0) # marginal fractional improvement in dependency
+                    scores = (hsic_scores1/hsic_scores2).view(div_size, m)
+                    scores = torch.max(scores, torch.tensor(1., device=scores.device))
+                    marginal_improvement_ratio = scores.mean(0) # marginal fractional improvement in dependency
 
                 if K2 == K:
                     hsic_scores1 = hsic.total_hsic_parallel(
@@ -615,7 +617,9 @@ def compute_ical_pointwise(
                         ).to(device)
                     )
                 if use_orig_condense:
-                    hsic_scores += [hsic_scores1-hsic_scores2.view(div_size, m).mean(0)]
+                    scores = hsic_scores1-hsic_scores2.view(div_size, m)
+                    scores = torch.max(scores, torch.tensor(0., device=scores.device))
+                    hsic_scores += [scores.mean(0)]
                 else:
                     hsic_scores1 *= (marginal_improvement_ratio-1)
                     hsic_scores += [hsic_scores1]

@@ -11,10 +11,8 @@ from acquisition_functions import AcquisitionFunction
 class AcquisitionMethod(enum.Enum):
     independent = "independent"
     multibald = "multibald"
-    hsicbald = "hsicbald"
-    icalscale = "icalscale"
-    icalavgscale = "icalavgscale"
-    icaljoint = "icalpointwise"
+    ical = "ical"
+    icalpointwise = "icalpointwise"
     fass = "fass"
     acsfw = "acsfw"
 
