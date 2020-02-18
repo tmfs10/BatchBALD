@@ -14,8 +14,7 @@ class AcquisitionMethod(enum.Enum):
     hsicbald = "hsicbald"
     icalscale = "icalscale"
     icalavgscale = "icalavgscale"
-    icaljoint = "icaljoint"
-    icaljoint2 = "icaljoint2"
+    icaljoint = "icalpointwise"
     fass = "fass"
     acsfw = "acsfw"
 
@@ -72,41 +71,8 @@ class AcquisitionMethod(enum.Enum):
                 target_size=target_size,
                 device=device,
             )
-        elif self == self.hsicbald:
-            return multi_bald.compute_ical_hsic_batch(
-                bayesian_model=bayesian_model,
-                available_loader=available_loader,
-                num_classes=num_classes,
-                k=k,
-                b=b,
-                initial_percentage=initial_percentage,
-                reduce_percentage=reduce_percentage,
-                target_size=target_size,
-                hsic_compute_batch_size=hsic_compute_batch_size,
-                hsic_kernel_name=hsic_kernel_name,
-                hsic_resample=hsic_resample,
-                device=device,
-                num_to_condense=num_to_condense,
-            )
-        elif self == self.icalscale:
-            """
-            return multi_bald.compute_ical_hsic_batch_scale(
-                bayesian_model=bayesian_model,
-                available_loader=available_loader,
-                num_classes=num_classes,
-                k=k,
-                b=b,
-                initial_percentage=initial_percentage,
-                reduce_percentage=reduce_percentage,
-                target_size=target_size,
-                max_batch_compute_size=max_batch_compute_size,
-                hsic_compute_batch_size=hsic_compute_batch_size,
-                hsic_kernel_name=hsic_kernel_name,
-                hsic_resample=hsic_resample,
-                device=device,
-            )
-            """
-            return multi_bald.compute_ical_hsic_batch_scale2(
+        elif self == self.ical:
+            return multi_bald.compute_ical(
                 bayesian_model=bayesian_model,
                 available_loader=available_loader,
                 num_classes=num_classes,
@@ -124,27 +90,8 @@ class AcquisitionMethod(enum.Enum):
                 store=store,
                 num_to_condense=num_to_condense,
             )
-        elif self == self.icalavgscale:
-            return multi_bald.compute_ical_hsic_batch_scale3(
-                bayesian_model=bayesian_model,
-                available_loader=available_loader,
-                num_classes=num_classes,
-                k=k,
-                b=b,
-                initial_percentage=initial_percentage,
-                reduce_percentage=reduce_percentage,
-                target_size=target_size,
-                max_batch_compute_size=max_batch_compute_size,
-                hsic_compute_batch_size=hsic_compute_batch_size,
-                hsic_kernel_name=hsic_kernel_name,
-                hsic_resample=hsic_resample,
-                max_greedy_iterations=ical_max_greedy_iterations,
-                device=device,
-                store=store,
-                num_to_condense=num_to_condense,
-            )
-        elif self == self.icaljoint:
-            return multi_bald.compute_ical_hsic_batch_scale4(
+        elif self == self.icalpointwise:
+            return multi_bald.compute_ical_pointwise(
                 bayesian_model=bayesian_model,
                 available_loader=available_loader,
                 num_classes=num_classes,
@@ -164,69 +111,6 @@ class AcquisitionMethod(enum.Enum):
                 num_inference_for_marginal_stat=num_inference_for_marginal_stat,
                 use_orig_condense=use_orig_condense,
             )
-            """
-            return multi_bald.compute_ical_joint_hsic_batch_scale(
-                bayesian_model=bayesian_model,
-                available_loader=available_loader,
-                num_classes=num_classes,
-                k=k,
-                b=b,
-                initial_percentage=initial_percentage,
-                reduce_percentage=reduce_percentage,
-                target_size=target_size,
-                max_batch_compute_size=max_batch_compute_size,
-                hsic_compute_batch_size=hsic_compute_batch_size,
-                hsic_kernel_name=hsic_kernel_name,
-                hsic_resample=hsic_resample,
-                max_greedy_iterations=ical_max_greedy_iterations,
-                device=device,
-                store=store,
-                random_ical_minibatch=random_ical_minibatch,
-                num_to_condense=num_to_condense,
-                use_condense_only=False,
-            )
-            """
-        elif self == self.icaljoint2:
-            return multi_bald.compute_ical_hsic_batch_scale5(
-                bayesian_model=bayesian_model,
-                available_loader=available_loader,
-                num_classes=num_classes,
-                k=k,
-                b=b,
-                initial_percentage=initial_percentage,
-                reduce_percentage=reduce_percentage,
-                target_size=target_size,
-                max_batch_compute_size=max_batch_compute_size,
-                hsic_compute_batch_size=hsic_compute_batch_size,
-                hsic_kernel_name=hsic_kernel_name,
-                hsic_resample=hsic_resample,
-                max_greedy_iterations=ical_max_greedy_iterations,
-                device=device,
-                store=store,
-                num_to_condense=num_to_condense,
-            )
-            """
-            return multi_bald.compute_ical_joint_hsic_batch_scale(
-                bayesian_model=bayesian_model,
-                available_loader=available_loader,
-                num_classes=num_classes,
-                k=k,
-                b=b,
-                initial_percentage=initial_percentage,
-                reduce_percentage=reduce_percentage,
-                target_size=target_size,
-                max_batch_compute_size=max_batch_compute_size,
-                hsic_compute_batch_size=hsic_compute_batch_size,
-                hsic_kernel_name=hsic_kernel_name,
-                hsic_resample=hsic_resample,
-                max_greedy_iterations=ical_max_greedy_iterations,
-                device=device,
-                store=store,
-                random_ical_minibatch=random_ical_minibatch,
-                num_to_condense=num_to_condense,
-                use_condense_only=True,
-            )
-            """
         elif self == self.fass:
             return multi_bald.compute_fass_batch(
                 bayesian_model=bayesian_model,

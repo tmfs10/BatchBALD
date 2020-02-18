@@ -17,7 +17,6 @@ from acquisition_functions import AcquisitionFunction, compute_pair_mi, generate
 from reduced_consistent_mc_sampler import reduced_eval_consistent_bayesian_model
 from blackhc import laaos
 
-# NOTE(blackhc): get the directory right (oh well)
 import blackhc.notebook
 
 import functools
@@ -71,8 +70,7 @@ def create_experiment_config_argparser(parser):
         type=int,
         action="append",
         help="sample that needs to be part of the initial samples (instead of sampling initial_samples_per_class)",
-        default=None,#[38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 34379, 24287, 9849, 29305, 39508, 39356, 8758, 42579, 13655, 7636, 21562, 41329]
-        #default=[38043, 40091, 17418, 2094, 39879, 3133, 5011, 40683, 54379, 24287, 9849, 59305, 39508, 39356, 8758, 52579, 13655, 7636, 21562, 41329],
+        default=None,
     )
     parser.add_argument(
         "--file_with_initial_samples",
