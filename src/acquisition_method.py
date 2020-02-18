@@ -42,6 +42,7 @@ class AcquisitionMethod(enum.Enum):
         random_ical_minibatch=False,
         num_to_condense=200,
         num_inference_for_marginal_stat=100,
+        use_orig_condense=False,
     ) -> AcquisitionBatch:
         target_size = max(
             min_candidates_per_acquired_item * b, len(available_loader.dataset) * min_remaining_percentage // 100
@@ -161,6 +162,7 @@ class AcquisitionMethod(enum.Enum):
                 store=store,
                 num_to_condense=num_to_condense,
                 num_inference_for_marginal_stat=num_inference_for_marginal_stat,
+                use_orig_condense=use_orig_condense,
             )
             """
             return multi_bald.compute_ical_joint_hsic_batch_scale(

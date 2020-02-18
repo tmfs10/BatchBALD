@@ -207,6 +207,12 @@ def create_experiment_config_argparser(parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--use_orig_condense",
+        action="store_true",
+        default=False,
+    )
+
     return parser
 
 
@@ -403,6 +409,7 @@ def main():
                 random_ical_minibatch=args.random_ical_minibatch,
                 num_to_condense=args.num_to_condense,
                 num_inference_for_marginal_stat=args.num_inference_for_marginal_stat,
+                use_orig_condense=args.use_orig_condense,
             )
             if type(ret) is tuple:
                 batch, time_taken = ret
@@ -416,9 +423,7 @@ def main():
         mi = 0.
         post_entropy = 0.
         sample_B_K_C = generate_sample(probs_B_K_C)
-        unacquired = list(set(range(B)).difference(batch.indices))
-        random.shuffle(unacquired)
-        for i, idx in enumerate(batch.indices):
+        for i, idx in enumerate(batch.indices[:100]):
             cur_post_entropy = compute_pair_mi(idx, i, probs_B_K_C, probs_B_C, sample_B_K_C)
             mi += (prior_entropy[i]-cur_post_entropy)/len(batch.indices)
             post_entropy += cur_post_entropy/len(batch.indices)
@@ -426,7 +431,7 @@ def main():
         post_entropy = post_entropy.item()
         print('post_entropy', post_entropy, 'mi', mi)
 
-        prior_entropy, mi = compute_mi_sample(probs_B_K_C, sample_B_K_C)
+        prior_entropy, mi = compute_mi_sample(probs_B_K_C, sample_B_K_C, num_samples=50)
         print('prior_entropy', prior_entropy, 'unpooled interdependency', mi)
 
 

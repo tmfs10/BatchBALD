@@ -941,8 +941,14 @@ def compute_ical_hsic_batch_scale2(
 
         _, sorted_idxes = torch.sort(hsic_scores, descending=True)
         winner_idxes = []
-        for g_ack_i in range(greedy_ack_batch_size):
-            winner_idxes += [sorted_idxes[g_ack_i].item()]
+        g_ack_i = 0
+        while len(winner_idxes) < greedy_ack_batch_size:
+            assert g_ack_i < sorted_idxes.shape[0]
+            idx = sorted_idxes[g_ack_i].item()
+            g_ack_i += 1
+            if idx in ack_bag:
+                continue
+            winner_idxes += [idx]
 
         ack_bag += winner_idxes
         global_acquisition_bag += [i.item() for i in result.subset_split.get_dataset_indices(winner_idxes)]
@@ -994,6 +1000,7 @@ def compute_ical_hsic_batch_scale4(
     store=None,
     num_to_condense=200,
     num_inference_for_marginal_stat=0,
+    use_orig_condense=False,
 ) -> AcquisitionBatch:
     assert hsic_compute_batch_size is not None
     assert hsic_kernel_name is not None
@@ -1070,7 +1077,10 @@ def compute_ical_hsic_batch_scale4(
         hsic_scores = []
         condense_kernels = kernel_matrices[indices_to_condense].permute([1, 2, 0]).mean(dim=-1, keepdim=True).unsqueeze(0) # 1, K, K, 1
         div_indices_to_condense = np.random.randint(low=0, high=score_sort_idx.shape[0], size=max_batch_compute_size)
-        div_condense_kernels = kernel_matrices[div_indices_to_condense].unsqueeze(1) # max_batch_compute_size, 1, K, K
+        if use_orig_condense:
+            div_indices_to_condense = indices_to_condense
+        div_size = div_indices_to_condense.shape[0]
+        div_condense_kernels = kernel_matrices[div_indices_to_condense].unsqueeze(1) # div_size, 1, K, K
         while bs < B:
             be = min(B, bs+hsic_compute_batch_size)
             m = be-bs
@@ -1095,33 +1105,35 @@ def compute_ical_hsic_batch_scale4(
                 if K2 < K:
                     cur_og_batch_kernel = batch_kernel[marginal_stat_K_idx][:, marginal_stat_K_idx][None, :, :, None].repeat([m, 1, 1, 1]) # M, K2, K2, 1
                     cur_batch_kernel = (cur_og_batch_kernel*num_ack + kernel_matrices[bs:be][:, marginal_stat_K_idx][:, :, marginal_stat_K_idx].unsqueeze(-1))/(num_ack+1) # M, K2, K2, 1
-                    cur_div_condense_kernels = div_condense_kernels[:, :, marginal_stat_K_idx][:, :, :, marginal_stat_K_idx].repeat([1, m, 1, 1]).view(-1, K2, K2, 1) # max_batch_compute_size*M, K, K, 1
+                    cur_div_condense_kernels = div_condense_kernels[:, :, marginal_stat_K_idx][:, :, :, marginal_stat_K_idx].repeat([1, m, 1, 1]).view(-1, K2, K2, 1) # div_size*M, K, K, 1
                 else:
                     cur_og_batch_kernel = batch_kernel[None, :, :, None].repeat([m, 1, 1, 1]) # M, K2, K2, 1
                     cur_batch_kernel = (cur_og_batch_kernel*num_ack + kernel_matrices[bs:be].unsqueeze(-1))/(num_ack+1) # M, K2, K2, 1
-                    cur_div_condense_kernels = div_condense_kernels.repeat([1, m, 1, 1]).view(-1, K2, K2, 1) # max_batch_compute_size*M, K, K, 1
+                    cur_div_condense_kernels = div_condense_kernels.repeat([1, m, 1, 1]).view(-1, K2, K2, 1) # div_size*M, K, K, 1
                 assert list(cur_batch_kernel.shape) == [m, K2, K2, 1], cur_batch_kernel.shape
-                assert list(cur_div_condense_kernels.shape) == [m*max_batch_compute_size, K2, K2, 1], cur_div_condense_kernels.shape
+                assert list(cur_div_condense_kernels.shape) == [m*div_size, K2, K2, 1], cur_div_condense_kernels.shape
                 hsic_scores1 = hsic.total_hsic_parallel(
                     torch.cat([
                         cur_div_condense_kernels,
-                        cur_batch_kernel.unsqueeze(0).repeat([max_batch_compute_size, 1, 1, 1, 1]).view(-1, K2, K2, 1), # max_batch_compute_size*M, K2, K2, 1
-                    ], # max_batch_compute_size*M, K2, K2, 2
+                        cur_batch_kernel.unsqueeze(0).repeat([div_size, 1, 1, 1, 1]).view(-1, K2, K2, 1), # div_size*M, K2, K2, 1
+                    ], # div_size*M, K2, K2, 2
                     dim=-1
                     ).to(device)
                 )
                 hsic_scores2 = hsic.total_hsic_parallel(
                     torch.cat([
                         cur_div_condense_kernels,
-                        cur_og_batch_kernel.unsqueeze(0).repeat([max_batch_compute_size, 1, 1, 1, 1]).view(-1, K2, K2, 1),
+                        cur_og_batch_kernel.unsqueeze(0).repeat([div_size, 1, 1, 1, 1]).view(-1, K2, K2, 1),
                     ],
                     dim=-1
                     ).to(device)
                 )
-                to_add = max(hsic_scores1.min().item(), hsic_scores2.min().item())
-                hsic_scores1 += to_add + 1e-7
-                hsic_scores2 += to_add + 1e-7
-                marginal_improvement_ratio = (hsic_scores1/hsic_scores2).view(max_batch_compute_size, m).mean(0) # marginal fractional improvement in dependency
+
+                if not use_orig_condense:
+                    to_add = max(hsic_scores1.min().item(), hsic_scores2.min().item())
+                    hsic_scores1 += to_add + 1e-8
+                    hsic_scores2 += to_add + 1e-8
+                    marginal_improvement_ratio = (hsic_scores1/hsic_scores2).view(div_size, m).mean(0) # marginal fractional improvement in dependency
 
                 if K2 == K:
                     hsic_scores1 = hsic.total_hsic_parallel(
@@ -1143,8 +1155,11 @@ def compute_ical_hsic_batch_scale4(
                         dim=-1
                         ).to(device)
                     )
-                hsic_scores1 *= (marginal_improvement_ratio-1)
-                hsic_scores += [hsic_scores1]
+                if use_orig_condense:
+                    hsic_scores += [hsic_scores1-hsic_scores2.view(div_size, m).mean(0)]
+                else:
+                    hsic_scores1 *= (marginal_improvement_ratio-1)
+                    hsic_scores += [hsic_scores1]
                 torch.cuda.empty_cache()
             bs = be
 
@@ -1152,6 +1167,16 @@ def compute_ical_hsic_batch_scale4(
         hsic_scores[ack_bag] = -math.inf
 
         _, sorted_idxes = torch.sort(hsic_scores, descending=True)
+        """
+        g_ack_i = 0
+        while len(winner_idxes) < greedy_ack_batch_size:
+            assert g_ack_i < sorted_idxes.shape[0]
+            idx = sorted_idxes[g_ack_i].item()
+            g_ack_i += 1
+            if idx in ack_bag:
+                continue
+            winner_idxes += [idx]
+        """
         winner_idxes = []
         for g_ack_i in range(greedy_ack_batch_size):
             winner_idxes += [sorted_idxes[g_ack_i].item()]
